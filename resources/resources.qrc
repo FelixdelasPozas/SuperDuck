@@ -1,0 +1,28 @@
+<RCC>
+  <qresource prefix="/Pato">
+    <file>splash.png</file>
+	<file>settings.svg</file>
+	<file>rubber-duck.svg</file>
+	<file>rubber-duck.ico</file>
+	<file>qt.ico</file>
+	<file>excel.svg</file>
+	<file>cloud-download.svg</file>
+	<file>AWS_Logo.svg</file>
+	<file>splash_frame_00.png</file>
+	<file>splash_frame_01.png</file>
+	<file>splash_frame_02.png</file>
+	<file>splash_frame_03.png</file>
+	<file>splash_frame_04.png</file>
+	<file>splash_frame_05.png</file>
+	<file>splash_frame_06.png</file>
+	<file>splash_frame_07.png</file>
+	<file>splash_frame_08.png</file>
+	<file>splash_frame_09.png</file>
+	<file>splash_frame_10.png</file>
+	<file>splash_frame_11.png</file>
+	<file>splash_frame_12.png</file>
+	<file>splash_frame_13.png</file>
+	<file>splash_frame_14.png</file>
+	<file>splash_frame_15.png</file>
+  </qresource>
+</RCC>
