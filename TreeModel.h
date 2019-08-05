@@ -64,6 +64,12 @@ class TreeModel
     Item *getItem(const QModelIndex &index) const;
 
   private:
+    /** \brief Emits the data changed signal for all children of the given index.
+     * \param[in] index QModelIndex struct.
+     *
+     */
+    void emitDataChanged(const QModelIndex &index);
+
     ItemsVector      &m_items;        /** reference to items list.  */
     QFileIconProvider m_iconProvider; /** icons provider.           */
 };

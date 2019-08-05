@@ -44,6 +44,10 @@ MainWindow::MainWindow(ItemFactory* factory, QWidget* parent, Qt::WindowFlags fl
 
   restoreSettings();
 
+  actionCreate_directory->setEnabled(false);
+  actionDelete->setEnabled(false);
+  actionUpload->setEnabled(false);
+
   auto model = new TreeModel(factory->items());
 
   auto filter = new FilterTreeModelProxy();
@@ -58,6 +62,8 @@ MainWindow::MainWindow(ItemFactory* factory, QWidget* parent, Qt::WindowFlags fl
   m_treeView->header()->resizeSections(QHeaderView::ResizeMode::ResizeToContents);
 
   connectSignals();
+
+  connect(model, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &, const QVector<int> &)), this, SLOT(refreshView()));
 }
 
 //-----------------------------------------------------------------------------
@@ -233,4 +239,11 @@ void MainWindow::onSearchButtonClicked()
 
     QApplication::restoreOverrideCursor();
   }
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::refreshView()
+{
+  m_treeView->update();
+  m_treeView->repaint();
 }

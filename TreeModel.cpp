@@ -20,6 +20,9 @@
 // Project
 #include <TreeModel.h>
 
+// Qt
+#include <QApplication>
+
 //-----------------------------------------------------------------------------
 TreeModel::TreeModel(ItemsVector& items, QObject* parent)
 : QAbstractItemModel(parent)
@@ -162,9 +165,11 @@ bool TreeModel::setData(const QModelIndex& index, const QVariant& value, int rol
     auto item = getItem(index);
     item->setSelected(value.toBool());
 
-    auto other = index.child(rowCount(index.parent()), columnCount(index.parent()));
+    emit dataChanged(index, index, QVector<int>(Qt::CheckStateRole));
 
-    emit dataChanged(index, other, QVector<int>(Qt::CheckStateRole));
+    emitDataChanged(index);
+
+    QApplication::processEvents();
 
     return true;
   }
@@ -183,6 +188,22 @@ Item* TreeModel::getItem(const QModelIndex& index) const
   }
 
   return item;
+}
+
+//-----------------------------------------------------------------------------
+void TreeModel::emitDataChanged(const QModelIndex& index)
+{
+  auto maxRow = rowCount(index);
+
+  if(maxRow > 0)
+  {
+    emit dataChanged(index.child(0, 0), index.child(maxRow-1, 0), QVector<int>(Qt::CheckStateRole));
+
+    for (int i = 0; i != rowCount(index); ++i)
+    {
+      emitDataChanged(index.child(i,  0));
+    }
+  }
 }
 
 //-----------------------------------------------------------------------------

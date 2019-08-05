@@ -90,6 +90,11 @@ class MainWindow
      */
     void onSearchButtonClicked();
 
+    /** \brief Refreshes the tree view when an item changes state.
+     *
+     */
+    void refreshView();
+
   private:
     /** \brief Returns the list of selected files as pairs of full_name-size.
      *
