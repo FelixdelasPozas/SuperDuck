@@ -195,8 +195,8 @@ int main(int argc, char **argv)
   if (!guard.create(1))
   {
     QMessageBox msgbox;
-    msgbox.setWindowIcon(QIcon(":/Duplicates/folder.svg"));
-    msgbox.setWindowTitle(QObject::tr("Duplicates Folder Finder"));
+    msgbox.setWindowIcon(QIcon(":/Pato/rubber-duck.ico"));
+    msgbox.setWindowTitle(QObject::tr("Super Pato"));
     msgbox.setIcon(QMessageBox::Information);
     msgbox.setText(QObject::tr("An instance is already running!"));
     msgbox.setStandardButtons(QMessageBox::Ok);
@@ -217,6 +217,18 @@ int main(int argc, char **argv)
   if(stream.is_open())
   {
     factory.deserializeItems(stream, &splash, &app);
+  }
+  else
+  {
+    QMessageBox msgbox;
+    msgbox.setWindowIcon(QIcon(":/Pato/rubber-duck.ico"));
+    msgbox.setWindowTitle(QObject::tr("Super Pato"));
+    msgbox.setIcon(QMessageBox::Information);
+    msgbox.setText(QObject::tr("Unable to find database!"));
+    msgbox.setStandardButtons(QMessageBox::Ok);
+    msgbox.exec();
+
+    return 0;
   }
 
   MainWindow application(&factory);

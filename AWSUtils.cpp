@@ -23,6 +23,8 @@
 // AWS
 #include <winsock2.h>
 #include <aws/core/Aws.h>
+#include <aws/core/utils/logging/AWSLogging.h>
+#include <aws/core/utils/logging/DefaultLogSystem.h>
 #include <aws/s3/S3Client.h>
 #include <aws/s3/model/ListObjectsRequest.h>
 #include <aws/s3/model/Object.h>
@@ -30,15 +32,20 @@
 const Aws::String BUCKET_NAME = "lccc-pato";
 
 //-----------------------------------------------------------------------------
-bool AWSUtils::downloadFiles(const std::string& path, const std::vector<std::pair<std::string, unsigned long long> > contents, bool fullPaths)
+bool AWSUtils::listBucket()
 {
+  Aws::Utils::Logging::InitializeAWSLogging(Aws::MakeShared<Aws::Utils::Logging::DefaultLogSystem>("RunUnitTests", Aws::Utils::Logging::LogLevel::Trace, "aws_sdk_"));
+
   Aws::SDKOptions options;
   Aws::InitAPI(options);
   {
     const Aws::String bucket_name = BUCKET_NAME;
     std::cout << "Objects in S3 bucket: " << bucket_name << std::endl;
 
-    Aws::S3::S3Client s3_client;
+    Aws::Client::ClientConfiguration clientConfig;
+    clientConfig.region = "eu-west-3";
+
+    Aws::S3::S3Client s3_client(clientConfig);
 
     Aws::S3::Model::ListObjectsRequest objects_request;
     objects_request.WithBucket(bucket_name);
@@ -47,7 +54,7 @@ bool AWSUtils::downloadFiles(const std::string& path, const std::vector<std::pai
 
     if (list_objects_outcome.IsSuccess())
     {
-      Aws::Vector<Aws::S3::Model::Object> object_list = list_objects_outcome.GetResult().GetContents();
+      auto object_list = list_objects_outcome.GetResult().GetContents();
 
       for (auto const &s3_object : object_list)
       {
@@ -61,5 +68,6 @@ bool AWSUtils::downloadFiles(const std::string& path, const std::vector<std::pai
   }
 
   Aws::ShutdownAPI(options);
+  Aws::Utils::Logging::ShutdownAWSLogging();
   return false;
 }

@@ -13,7 +13,8 @@ set(CMAKE_CXX_STANDARD 11)
 
 add_definitions(
   -std=c++11
-  -fpermissive)
+  -fpermissive
+  -mwindows)
 
 include_directories (${CMAKE_SOURCE_DIR})
 include_directories (${PROJECT_BINARY_DIR})

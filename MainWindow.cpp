@@ -20,6 +20,7 @@
 // Project
 #include <MainWindow.h>
 #include <ListExportUtils.h>
+#include <AWSUtils.h>
 
 // C++
 #include <fstream>
@@ -191,7 +192,7 @@ void MainWindow::onDownloadButtonTriggered()
 
   if(!dir.isEmpty())
   {
-    // TODO
+    AWSUtils::listBucket();
   }
 }
 

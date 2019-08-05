@@ -26,7 +26,8 @@
 
 namespace AWSUtils
 {
-  bool downloadFiles(const std::string &path, const std::vector<std::pair<std::string, unsigned long long>> contents, bool fullPaths = false);
+  //bool downloadFiles(const std::string &path, const std::vector<std::pair<std::string, unsigned long long>> contents, bool fullPaths = false);
+  bool listBucket();
 };
 
 #endif // AWSUTILS_H_
