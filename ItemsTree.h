@@ -33,6 +33,7 @@ enum class Type: char { Directory = 0, File = 1 };
 
 class Item;
 using Items = QList<Item *>;
+using ItemsVector = std::vector<Item *>;
 
 class SplashScreen;
 class QApplication;
@@ -89,6 +90,12 @@ class ItemFactory
      */
     bool hasBeenModified() const
     { return m_modified; }
+
+    /** \brief Returns a reference to the items vector.
+     *
+     */
+    ItemsVector &items()
+    { return m_items; }
 
   private slots:
     /** \brief Marks the model as modified when an item is destroyed.

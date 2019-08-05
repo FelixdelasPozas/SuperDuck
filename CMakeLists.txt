@@ -55,7 +55,9 @@ set (SOURCES
 	${PROJECT_BINARY_DIR}/ElPato.rc
 	SplashScreen.cpp
 	ItemsTree.cpp
+	TreeModel.cpp
 	MainWindow.cpp
+	ListExportUtils.cpp
 	main.cpp
 	)
   

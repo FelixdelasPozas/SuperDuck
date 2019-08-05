@@ -20,28 +20,51 @@
 #ifndef TREEMODEL_H_
 #define TREEMODEL_H_
 
+// Project
+#include <ItemsTree.h>
+
 // Qt
-#include <QFileSystemModel>
+#include <QAbstractItemModel>
+#include <QFileIconProvider>
 
 /** \class TreeModel
  * \brief Implements a Qt model for the tree structure.
  *
  */
 class TreeModel
-: public QFileSystemModel
+: public QAbstractItemModel
 {
     Q_OBJECT
   public:
     /** \brief TreeModel class constructor.
      *
      */
-    explicit TreeModel(QObject *parent = nullptr);
+    explicit TreeModel(ItemsVector &items, QObject *parent = nullptr);
 
     /** \brief TreeModel class virtual destructor.
      *
      */
     virtual ~TreeModel()
     {}
+
+    QVariant data(const QModelIndex &index, int role) const override;
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+    QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override;
+    QModelIndex parent(const QModelIndex &index) const override;
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
+    Qt::ItemFlags flags(const QModelIndex &index) const override;
+    bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
+
+    /** \brief Returns the item associated with the given QModelIndex.
+     * \param[in] index QModelIndex struct.
+     *
+     */
+    Item *getItem(const QModelIndex &index) const;
+
+  private:
+    ItemsVector      &m_items;        /** reference to items list.  */
+    QFileIconProvider m_iconProvider; /** icons provider.           */
 };
 
 #endif // TREEMODEL_H_

@@ -19,12 +19,19 @@
 
 // Project
 #include <MainWindow.h>
+#include <TreeModel.h>
+#include <ListExportUtils.h>
 
 // C++
 #include <fstream>
+#include <cassert>
 
 // Qt
 #include <QSettings>
+#include <QMessageBox>
+#include <QDateTime>
+#include <QFileDialog>
+#include <QStandardPaths>
 
 const QString STATE    = "State";
 const QString GEOMETRY = "Geometry";
@@ -39,6 +46,13 @@ MainWindow::MainWindow(ItemFactory* factory, QWidget* parent, Qt::WindowFlags fl
   connectSignals();
 
   restoreSettings();
+
+  auto model = new TreeModel(factory->items());
+  m_treeView->setModel(model);
+  m_treeView->setAlternatingRowColors(true);
+  m_treeView->setAnimated(true);
+  m_treeView->setExpandsOnDoubleClick(true);
+  m_treeView->header()->resizeSections(QHeaderView::ResizeMode::ResizeToContents);
 }
 
 //-----------------------------------------------------------------------------
@@ -84,4 +98,61 @@ void MainWindow::saveSettings()
 //-----------------------------------------------------------------------------
 void MainWindow::connectSignals()
 {
+  connect(actionCreate_Excel_list, SIGNAL(triggered(bool)), this, SLOT(onExcelButtonTriggered()));
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::onExcelButtonTriggered()
+{
+  auto contents = selectedFiles();
+
+  if(contents.empty())
+  {
+    QMessageBox::information(this, tr("Export list"), tr("No files selected!"));
+  }
+  else
+  {
+    auto dateTimeString = QDateTime::currentDateTime().toString("dd.mm.yyyy-hh.mm");
+    auto suggestion = tr("Pato selected files %1.xls").arg(dateTimeString);
+    auto path = QStandardPaths::standardLocations(QStandardPaths::DocumentsLocation).first();
+    auto filename = QFileDialog::getSaveFileName(this, tr("Save Excel file"), path + QDir::separator() + suggestion, tr("Excel files (*.xls);;CSV files (*.csv)"));
+
+    bool success = false;
+    if(!filename.isEmpty())
+    {
+      if(filename.endsWith(".csv", Qt::CaseInsensitive))
+      {
+        success = ListExportUtils::saveToCSV(filename.toStdString(), contents);
+      }
+      else
+      {
+        assert(filename.endsWith(".xls", Qt::CaseInsensitive));
+        success = ListExportUtils::saveToXLS(filename.toStdString(), contents);
+      }
+
+      if(!success)
+      {
+        auto message = tr("File '%1' couldn't be saved.").arg(filename);
+        QMessageBox::critical(this, tr("Export list"), message);
+      }
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+std::vector<std::pair<std::string, unsigned long long> > MainWindow::selectedFiles() const
+{
+  std::vector<std::pair<std::string, unsigned long long>> contents;
+  auto &items = m_factory->items();
+
+  auto searchSelectedFiles = [&contents](const Item *i)
+  {
+    if(i && i->isSelected() && i->type() == Type::File)
+    {
+      contents.emplace_back(i->fullName().toLatin1(), i->size());
+    }
+  };
+  std::for_each(items.cbegin(), items.cend(), searchSelectedFiles);
+
+  return contents;
 }

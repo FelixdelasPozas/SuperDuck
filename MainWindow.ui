@@ -60,7 +60,7 @@
      </layout>
     </item>
     <item>
-     <widget class="QListView" name="m_listView"/>
+     <widget class="QTreeView" name="m_treeView"/>
     </item>
    </layout>
   </widget>
@@ -120,10 +120,10 @@
      <normaloff>:/Pato/excel.svg</normaloff>:/Pato/excel.svg</iconset>
    </property>
    <property name="text">
-    <string>Create Excel list</string>
+    <string>Export list</string>
    </property>
    <property name="toolTip">
-    <string>Create an excel file with the selected files.</string>
+    <string>Create an excel file or a CSV file with the list of selected files.</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+L</string>

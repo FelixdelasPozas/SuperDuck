@@ -177,10 +177,10 @@ long long int Item::id() const
 //-----------------------------------------------------------------------------
 bool lessThan(const Item* lhs, const Item* rhs)
 {
-  if(!lhs) return true;
-  if(!rhs) return false;
-  if(lhs->type() == Type::Directory && rhs->type() != Type::Directory) return false;
-  if(lhs->type() != Type::Directory && rhs->type() == Type::Directory) return true;
+  if(!lhs) return false;
+  if(!rhs) return true;
+  if(lhs->type() == Type::Directory && rhs->type() != Type::Directory) return true;
+  if(lhs->type() != Type::Directory && rhs->type() == Type::Directory) return false;
   return (lhs->name() < rhs->name());
 }
 
@@ -352,6 +352,12 @@ void ItemFactory::deserializeItems(std::ifstream& stream, SplashScreen *splash, 
 
   stream.close();
   m_modified = false;
+
+  auto sortChildren = [](Item *i)
+  {
+    if(i->type() == Type::Directory) std::sort(i->m_childs.begin(), i->m_childs.end(), lessThan);
+  };
+  std::for_each(m_items.begin(), m_items.end(), sortChildren);
 
   auto it = std::find_if(m_items.cbegin() + 1, m_items.cend(), [](Item *i){ return i && !i->parent() && i->id() != 0; });
   if(it != m_items.cend())

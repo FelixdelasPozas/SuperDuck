@@ -47,7 +47,18 @@ class MainWindow
      */
     virtual ~MainWindow();
 
+  private slots:
+    /** \brief Looks for selected items and writes an excel file to disk.
+     *
+     */
+    void onExcelButtonTriggered();
+
   private:
+    /** \brief Returns the list of selected files as pairs of full_name-size.
+     *
+     */
+    std::vector<std::pair<std::string, unsigned long long>> selectedFiles() const;
+
     /** \brief Helper method to restore application position and size.
      *
      */
