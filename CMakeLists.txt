@@ -11,6 +11,10 @@ set (SUPER_DUCK_VERSION_PATCH 0)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_CXX_STANDARD 11)
 
+add_definitions(
+  -std=c++11
+  -fpermissive)
+
 include_directories (${CMAKE_SOURCE_DIR})
 include_directories (${PROJECT_BINARY_DIR})
 
@@ -27,6 +31,13 @@ include_directories ( ${Qt5Widgets_INCLUDE_DIRS}
 # Requires that you build with:
 #   -DCMAKE_PREFIX_PATH=/path/to/sdk_install
 find_package(AWSSDK REQUIRED COMPONENTS s3)
+set(S3_INCLUDE_DIRS "D:/Desarrollo/Bibliotecas/aws-sdk-cpp-1.7.154/aws-cpp-sdk-s3/include"
+                    "D:/Desarrollo/Bibliotecas/aws-sdk-cpp-1.7.154/aws-cpp-sdk-core/include")
+set(S3_LIBRARIES 
+                 "D:/Desarrollo/Bibliotecas/aws-sdk-build/aws-cpp-sdk-core/libaws-cpp-sdk-core.dll"
+                 "D:/Desarrollo/Bibliotecas/aws-sdk-build/aws-cpp-sdk-s3/libaws-cpp-sdk-s3.dll"
+                 )
+include_directories(${S3_INCLUDE_DIRS})
 
 set(XLSLIB_INCLUDE_DIRS "D:/Desarrollo/Bibliotecas/xlslib/xlslib/src")
 set(XLSLIB_LIBRARIES "D:/Desarrollo/Bibliotecas/xlslib-build/libxlslib.a")
@@ -58,6 +69,7 @@ set (SOURCES
 	TreeModel.cpp
 	MainWindow.cpp
 	ListExportUtils.cpp
+	AWSUtils.cpp
 	main.cpp
 	)
   
@@ -66,7 +78,14 @@ set (LIBRARIES
  	Qt5::Widgets
 	${AWSSDK_LINK_LIBRARIES}
 	${XLSLIB_LIBRARIES}
+	${S3_LIBRARIES}
+	ws2_32
+	wsock32
+	userenv
+	version
 	)
+	
+Message(STATUS "AWSSDK_LINK_LIBS ${LIBRARIES}") 
   
 add_executable(ElPato ${SOURCES})
 target_link_libraries (ElPato ${LIBRARIES})

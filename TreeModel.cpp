@@ -34,11 +34,23 @@ QVariant TreeModel::data(const QModelIndex& index, int role) const
 
   auto item = getItem(index);
 
+  auto toAppropiateUnits = [](const unsigned long long size)
+  {
+    double dSize = size;
+    double value = dSize/(1024.*1024.);
+    if(value < 1) return tr("%1 bytes").arg(size);
+    value = dSize/(1024.*1024.*1024.);
+    if(value < 1) return tr("%1 Mb").arg(QString::number(dSize/(1024.*1024.), 'f', 2));
+    value = dSize/(1024.*1024.*1024.*1024.);
+    if(value < 1) return tr("%1 Gb").arg(QString::number(dSize/(1024.*1024.*1024.), 'f', 2));
+    return tr("%1 Tb").arg(QString::number(value, 'f', 2));
+  };
+
   switch(role)
   {
     case Qt::DisplayRole:
       if(index.column() == 0) return item->name();
-      if(index.column() == 1 &&item->type() == Type::File) return item->size();
+      if(index.column() == 1) return toAppropiateUnits(item->size());
       break;
     case Qt::DecorationRole:
       if(index.column() == 0)
@@ -171,4 +183,27 @@ Item* TreeModel::getItem(const QModelIndex& index) const
   }
 
   return item;
+}
+
+//-----------------------------------------------------------------------------
+FilterTreeModelProxy::FilterTreeModelProxy(QObject* parent)
+: QSortFilterProxyModel(parent)
+{
+}
+
+//-----------------------------------------------------------------------------
+bool FilterTreeModelProxy::filterAcceptsRow(int source_row, const QModelIndex& source_parent) const
+{
+  if (QSortFilterProxyModel::filterAcceptsRow(source_row, source_parent))
+      return true;
+
+  const QModelIndex index = sourceModel()->index(source_row, 0, source_parent);
+  const int count = sourceModel()->rowCount(index);
+
+  for (int i = 0; i < count; ++i)
+  {
+    if (filterAcceptsRow(i, index)) return true;
+  }
+
+  return false;
 }

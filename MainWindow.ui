@@ -29,33 +29,42 @@
           <height>0</height>
          </size>
         </property>
+        <property name="toolTip">
+         <string>Enter text to filter files and folders by name.</string>
+        </property>
+        <property name="statusTip">
+         <string>Enter text to filter files and folders by name.</string>
+        </property>
         <property name="text">
-         <string>Search </string>
+         <string>Search Text</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="m_searchLine"/>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QLabel" name="label">
-        <property name="minimumSize">
-         <size>
-          <width>45</width>
-          <height>0</height>
-         </size>
+       <widget class="QLineEdit" name="m_searchLine">
+        <property name="toolTip">
+         <string>Enter text to filter files and folders by name.</string>
         </property>
-        <property name="text">
-         <string>Directory</string>
+        <property name="statusTip">
+         <string>Enter text to filter files and folders by name.</string>
+        </property>
+        <property name="placeholderText">
+         <string>Enter text to filter...</string>
+        </property>
+        <property name="clearButtonEnabled">
+         <bool>true</bool>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="m_dirLine"/>
+       <widget class="QPushButton" name="m_searchButton">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Search</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </item>
@@ -91,8 +100,11 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionDownload"/>
+   <addaction name="actionUpload"/>
+   <addaction name="actionCreate_directory"/>
+   <addaction name="actionDelete"/>
    <addaction name="separator"/>
-   <addaction name="actionCreate_Excel_list"/>
+   <addaction name="actionCreate_list"/>
    <addaction name="separator"/>
    <addaction name="actionSettings"/>
   </widget>
@@ -107,6 +119,9 @@
    <property name="toolTip">
     <string>Download selected files</string>
    </property>
+   <property name="statusTip">
+    <string>Download selected files</string>
+   </property>
    <property name="shortcut">
     <string>Ctrl+D</string>
    </property>
@@ -114,7 +129,7 @@
     <bool>true</bool>
    </property>
   </action>
-  <action name="actionCreate_Excel_list">
+  <action name="actionCreate_list">
    <property name="icon">
     <iconset resource="resources/resources.qrc">
      <normaloff>:/Pato/excel.svg</normaloff>:/Pato/excel.svg</iconset>
@@ -123,6 +138,9 @@
     <string>Export list</string>
    </property>
    <property name="toolTip">
+    <string>Create an excel file or a CSV file with the list of selected files.</string>
+   </property>
+   <property name="statusTip">
     <string>Create an excel file or a CSV file with the list of selected files.</string>
    </property>
    <property name="shortcut">
@@ -140,11 +158,59 @@
    <property name="toolTip">
     <string>Shows application settings dialog.</string>
    </property>
+   <property name="statusTip">
+    <string>Shows application settings dialog.</string>
+   </property>
    <property name="shortcut">
     <string>Ctrl+S</string>
    </property>
    <property name="menuRole">
     <enum>QAction::PreferencesRole</enum>
+   </property>
+  </action>
+  <action name="actionUpload">
+   <property name="icon">
+    <iconset resource="resources/resources.qrc">
+     <normaloff>:/Pato/cloud-upload.svg</normaloff>:/Pato/cloud-upload.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Upload</string>
+   </property>
+   <property name="toolTip">
+    <string>Upload files.</string>
+   </property>
+   <property name="statusTip">
+    <string>Upload files...</string>
+   </property>
+  </action>
+  <action name="actionCreate_directory">
+   <property name="icon">
+    <iconset resource="resources/resources.qrc">
+     <normaloff>:/Pato/cloud-create.svg</normaloff>:/Pato/cloud-create.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Create directory</string>
+   </property>
+   <property name="toolTip">
+    <string>Create a new directory inside the selected one.</string>
+   </property>
+   <property name="statusTip">
+    <string>Create a new directory inside the selected one.</string>
+   </property>
+  </action>
+  <action name="actionDelete">
+   <property name="icon">
+    <iconset resource="resources/resources.qrc">
+     <normaloff>:/Pato/cloud-delete.svg</normaloff>:/Pato/cloud-delete.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Delete</string>
+   </property>
+   <property name="toolTip">
+    <string>Delete selected objects.</string>
+   </property>
+   <property name="statusTip">
+    <string>Delete selected objects.</string>
    </property>
   </action>
  </widget>

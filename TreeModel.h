@@ -26,6 +26,7 @@
 // Qt
 #include <QAbstractItemModel>
 #include <QFileIconProvider>
+#include <QSortFilterProxyModel>
 
 /** \class TreeModel
  * \brief Implements a Qt model for the tree structure.
@@ -65,6 +66,30 @@ class TreeModel
   private:
     ItemsVector      &m_items;        /** reference to items list.  */
     QFileIconProvider m_iconProvider; /** icons provider.           */
+};
+
+/** \class FilterTreeModelProxy
+ * \brief Implements a proxy filter for the tree model.
+ *
+ */
+class FilterTreeModelProxy
+: public QSortFilterProxyModel
+{
+    Q_OBJECT
+  public:
+    /** \brief FilterTreeModelProxy class constructor.
+     * \param[in] parent Raw pointer of the object parent of this one.
+     *
+     */
+    explicit FilterTreeModelProxy(QObject *parent = nullptr);
+
+    /** \brief FilterTreeModelProxy class virtual destructor.
+     *
+     */
+    virtual ~FilterTreeModelProxy()
+    {};
+  protected:
+      virtual bool filterAcceptsRow(int source_row, const QModelIndex &source_parent) const override;
 };
 
 #endif // TREEMODEL_H_

@@ -121,7 +121,11 @@ QString Item::fullName() const
 //-----------------------------------------------------------------------------
 unsigned long long Item::size() const
 {
-  return m_size;
+  if(m_type == Type::File) return m_size;
+
+  unsigned long long size = 0;
+  std::for_each(m_childs.cbegin(), m_childs.cend(), [&size](const Item *i) { size += i->size(); });
+  return size;
 }
 
 //-----------------------------------------------------------------------------
@@ -211,7 +215,7 @@ void Item::serializeState(std::ofstream& stream) const
   stream << std::to_string(m_id);                           // id
   stream << " " << (m_type == Type::Directory ? "d" : "f"); // type
   stream << " \"" << m_name.toStdString() << "\" ";         // name
-  stream << std::to_string(m_size) << std::endl;            // size
+  stream << std::to_string(size()) << std::endl;            // size
 }
 
 //-----------------------------------------------------------------------------

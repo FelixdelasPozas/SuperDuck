@@ -7,6 +7,9 @@
 	<file>qt.ico</file>
 	<file>excel.svg</file>
 	<file>cloud-download.svg</file>
+	<file>cloud-upload.svg</file>
+	<file>cloud-delete.svg</file>
+	<file>cloud-create.svg</file>
 	<file>AWS_Logo.svg</file>
 	<file>splash_frame_00.png</file>
 	<file>splash_frame_01.png</file>

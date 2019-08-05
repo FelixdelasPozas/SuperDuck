@@ -22,10 +22,11 @@
 
 // Project
 #include <ItemsTree.h>
+#include <TreeModel.h>
+#include "ui_MainWindow.h"
 
 // Qt
 #include <QMainWindow>
-#include "ui_MainWindow.h"
 
 /** \class MainWindow
  * \brief Implements the main window of the application.
@@ -53,6 +54,42 @@ class MainWindow
      */
     void onExcelButtonTriggered();
 
+    /** \brief Looks for selected items to download from S3 bucket.
+     *
+     */
+    void onDownloadButtonTriggered();
+
+    /** \brief Shows the settings dialog.
+     *
+     */
+    void onSettingsButtonTriggered();
+
+    /** \brief Shows a file selection dialog and uploads the files to the S3 bucket.
+     *
+     */
+    void onUploadButtonTriggered();
+
+    /** \brief Deletes selected items from the S3 bucket.
+     *
+     */
+    void onDeleteButtonTriggered();
+
+    /** \brief Creates a new directory on the S3 bucket.
+     *
+     */
+    void onCreateButtonTriggered();
+
+    /** \brief Updates the UI when the search text changes.
+     * \param[in] text Filter text.
+     *
+     */
+    void onSearchTextChanged(const QString &text);
+
+    /** \brief Updates the filter of the model with the text from the search field.
+     *
+     */
+    void onSearchButtonClicked();
+
   private:
     /** \brief Returns the list of selected files as pairs of full_name-size.
      *
@@ -74,7 +111,8 @@ class MainWindow
      */
     void connectSignals();
 
-    ItemFactory *m_factory; /** item factory pointer. */
+    ItemFactory          *m_factory; /** item factory pointer. */
+    FilterTreeModelProxy *m_filter;  /** tree model filter.    */
 };
 
 #endif // MAINWINDOW_H_

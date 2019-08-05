@@ -19,7 +19,6 @@
 
 // Project
 #include <MainWindow.h>
-#include <TreeModel.h>
 #include <ListExportUtils.h>
 
 // C++
@@ -43,16 +42,22 @@ MainWindow::MainWindow(ItemFactory* factory, QWidget* parent, Qt::WindowFlags fl
 {
   setupUi(this);
 
-  connectSignals();
-
   restoreSettings();
 
   auto model = new TreeModel(factory->items());
-  m_treeView->setModel(model);
+
+  auto filter = new FilterTreeModelProxy();
+  filter->setSourceModel(model);
+  filter->setFilterCaseSensitivity(Qt::CaseInsensitive);
+  filter->setFilterKeyColumn(0);
+
+  m_treeView->setModel(filter);
   m_treeView->setAlternatingRowColors(true);
   m_treeView->setAnimated(true);
   m_treeView->setExpandsOnDoubleClick(true);
   m_treeView->header()->resizeSections(QHeaderView::ResizeMode::ResizeToContents);
+
+  connectSignals();
 }
 
 //-----------------------------------------------------------------------------
@@ -98,7 +103,15 @@ void MainWindow::saveSettings()
 //-----------------------------------------------------------------------------
 void MainWindow::connectSignals()
 {
-  connect(actionCreate_Excel_list, SIGNAL(triggered(bool)), this, SLOT(onExcelButtonTriggered()));
+  connect(actionCreate_list, SIGNAL(triggered(bool)), this, SLOT(onExcelButtonTriggered()));
+  connect(actionDownload, SIGNAL(triggered(bool)), this, SLOT(onDownloadButtonTriggered()));
+  connect(actionSettings, SIGNAL(triggered(bool)), this, SLOT(onSettingsButtonTriggered()));
+  connect(actionUpload, SIGNAL(triggered(bool)), this, SLOT(onUploadButtonTriggered()));
+  connect(actionDelete, SIGNAL(triggered(bool)), this, SLOT(onDeleteButtonTriggered()));
+  connect(actionCreate_directory, SIGNAL(triggered(bool)), this, SLOT(onCreateButtonTriggered()));
+  connect(m_searchLine, SIGNAL(textChanged(const QString &)), this, SLOT(onSearchTextChanged(const QString &)));
+
+  connect(m_searchButton, SIGNAL(clicked(bool)), this, SLOT(onSearchButtonClicked()));
 }
 
 //-----------------------------------------------------------------------------
@@ -109,32 +122,31 @@ void MainWindow::onExcelButtonTriggered()
   if(contents.empty())
   {
     QMessageBox::information(this, tr("Export list"), tr("No files selected!"));
+    return;
   }
-  else
+
+  auto dateTimeString = QDateTime::currentDateTime().toString("dd.mm.yyyy-hh.mm");
+  auto suggestion = tr("Pato selected files %1.xls").arg(dateTimeString);
+  auto path = QStandardPaths::standardLocations(QStandardPaths::DocumentsLocation).first();
+  auto filename = QFileDialog::getSaveFileName(this, tr("Save Excel file"), path + QDir::separator() + suggestion, tr("Excel files (*.xls);;CSV files (*.csv)"));
+
+  bool success = false;
+  if (!filename.isEmpty())
   {
-    auto dateTimeString = QDateTime::currentDateTime().toString("dd.mm.yyyy-hh.mm");
-    auto suggestion = tr("Pato selected files %1.xls").arg(dateTimeString);
-    auto path = QStandardPaths::standardLocations(QStandardPaths::DocumentsLocation).first();
-    auto filename = QFileDialog::getSaveFileName(this, tr("Save Excel file"), path + QDir::separator() + suggestion, tr("Excel files (*.xls);;CSV files (*.csv)"));
-
-    bool success = false;
-    if(!filename.isEmpty())
+    if (filename.endsWith(".csv", Qt::CaseInsensitive))
     {
-      if(filename.endsWith(".csv", Qt::CaseInsensitive))
-      {
-        success = ListExportUtils::saveToCSV(filename.toStdString(), contents);
-      }
-      else
-      {
-        assert(filename.endsWith(".xls", Qt::CaseInsensitive));
-        success = ListExportUtils::saveToXLS(filename.toStdString(), contents);
-      }
+      success = ListExportUtils::saveToCSV(filename.toStdString(), contents);
+    }
+    else
+    {
+      assert(filename.endsWith(".xls", Qt::CaseInsensitive));
+      success = ListExportUtils::saveToXLS(filename.toStdString(), contents);
+    }
 
-      if(!success)
-      {
-        auto message = tr("File '%1' couldn't be saved.").arg(filename);
-        QMessageBox::critical(this, tr("Export list"), message);
-      }
+    if (!success)
+    {
+      auto message = tr("File '%1' couldn't be saved.").arg(filename);
+      QMessageBox::critical(this, tr("Export list"), message);
     }
   }
 }
@@ -155,4 +167,70 @@ std::vector<std::pair<std::string, unsigned long long> > MainWindow::selectedFil
   std::for_each(items.cbegin(), items.cend(), searchSelectedFiles);
 
   return contents;
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::onDownloadButtonTriggered()
+{
+  auto contents = selectedFiles();
+
+  if(contents.empty())
+  {
+    QMessageBox::information(this, tr("Download files"), tr("No files selected!"));
+    return;
+  }
+
+  auto defaultDir = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation).first();
+  auto dir = QFileDialog::getExistingDirectory(this, tr("Select download directory"), defaultDir, QFileDialog::ShowDirsOnly);
+
+  if(!dir.isEmpty())
+  {
+    // TODO
+  }
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::onSettingsButtonTriggered()
+{
+  // TODO
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::onUploadButtonTriggered()
+{
+  // TODO
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::onDeleteButtonTriggered()
+{
+  // TODO
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::onCreateButtonTriggered()
+{
+  // TODO
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::onSearchTextChanged(const QString& text)
+{
+  m_searchButton->setEnabled(!text.isEmpty());
+
+  if(text.isEmpty()) onSearchButtonClicked();
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::onSearchButtonClicked()
+{
+  auto filter = qobject_cast<FilterTreeModelProxy *>(m_treeView->model());
+  if(filter)
+  {
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+
+    filter->setFilterFixedString(m_searchLine->text());
+
+    QApplication::restoreOverrideCursor();
+  }
 }
