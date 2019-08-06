@@ -57,10 +57,10 @@ class MainWindow
     virtual void showEvent(QShowEvent *e) override;
 
   private slots:
-    /** \brief Looks for selected items and writes an excel file to disk.
+    /** \brief Looks for selected items and writes an excel or csv file to disk.
      *
      */
-    void onExcelButtonTriggered();
+    void onExportButtonTriggered();
 
     /** \brief Looks for selected items to download from S3 bucket.
      *

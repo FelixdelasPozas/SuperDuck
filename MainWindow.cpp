@@ -58,6 +58,7 @@ MainWindow::MainWindow(Utils::Configuration &configuration, ItemFactory* factory
   filter->setSourceModel(model);
   filter->setFilterCaseSensitivity(Qt::CaseInsensitive);
   filter->setFilterKeyColumn(0);
+  filter->setFilterRole(Qt::DisplayRole);
 
   m_treeView->setModel(filter);
   m_treeView->setAlternatingRowColors(true);
@@ -113,7 +114,7 @@ void MainWindow::saveConfiguration()
 //-----------------------------------------------------------------------------
 void MainWindow::connectSignals()
 {
-  connect(actionCreate_list, SIGNAL(triggered(bool)), this, SLOT(onExcelButtonTriggered()));
+  connect(actionCreate_list, SIGNAL(triggered(bool)), this, SLOT(onExportButtonTriggered()));
   connect(actionDownload, SIGNAL(triggered(bool)), this, SLOT(onDownloadButtonTriggered()));
   connect(actionSettings, SIGNAL(triggered(bool)), this, SLOT(onSettingsButtonTriggered()));
   connect(actionUpload, SIGNAL(triggered(bool)), this, SLOT(onUploadButtonTriggered()));
@@ -125,7 +126,7 @@ void MainWindow::connectSignals()
 }
 
 //-----------------------------------------------------------------------------
-void MainWindow::onExcelButtonTriggered()
+void MainWindow::onExportButtonTriggered()
 {
   auto contents = selectedFiles();
 
@@ -138,11 +139,35 @@ void MainWindow::onExcelButtonTriggered()
   auto dateTimeString = QDateTime::currentDateTime().toString("dd.mm.yyyy-hh.mm");
   auto suggestion = tr("Pato selected files %1.xls").arg(dateTimeString);
   auto path = QStandardPaths::standardLocations(QStandardPaths::DocumentsLocation).first();
-  auto filename = QFileDialog::getSaveFileName(this, tr("Save Excel file"), path + QDir::separator() + suggestion, tr("Excel files (*.xls);;CSV files (*.csv)"));
+  auto filename = QFileDialog::getSaveFileName(this, tr("Save file list"), path + QDir::separator() + suggestion, tr("Excel files (*.xls);;CSV files (*.csv)"));
 
   bool success = false;
   if (!filename.isEmpty())
   {
+    // prepare names if necessary
+    if(!m_configuration.Export_Full_Paths)
+    {
+      std::vector<std::pair<std::string, unsigned long long>> trimmedContents;
+
+      auto trimPath = [&trimmedContents](const std::pair<std::string, unsigned long long> &p)
+      {
+        auto name = p.first;
+        const auto pos = p.first.find_last_of('/');
+        std::cout << "pos " << pos << std::endl;
+        if(pos != std::string::npos)
+        {
+          name = p.first.substr(pos+1, p.first.length()-(pos+1));
+        }
+        unsigned long long size = p.second;
+
+        trimmedContents.emplace_back(name, size);
+      };
+      std::for_each(contents.cbegin(), contents.cend(), trimPath);
+
+      contents = trimmedContents;
+    }
+
+    // save
     if (filename.endsWith(".csv", Qt::CaseInsensitive))
     {
       success = ListExportUtils::saveToCSV(filename.toStdString(), contents);
@@ -162,7 +187,7 @@ void MainWindow::onExcelButtonTriggered()
 }
 
 //-----------------------------------------------------------------------------
-std::vector<std::pair<std::string, unsigned long long> > MainWindow::selectedFiles() const
+std::vector<std::pair<std::string, unsigned long long>> MainWindow::selectedFiles() const
 {
   std::vector<std::pair<std::string, unsigned long long>> contents;
   auto &items = m_factory->items();
@@ -208,7 +233,16 @@ void MainWindow::onSettingsButtonTriggered()
   if(dialog.exec() == QDialog::Accepted)
   {
     const auto config = dialog.configuration();
-    m_configuration = config;
+    if(config.isValid())
+    {
+      m_configuration.AWS_Access_key_id     = config.AWS_Access_key_id;
+      m_configuration.AWS_Secret_access_key = config.AWS_Secret_access_key;
+      m_configuration.AWS_Bucket            = config.AWS_Bucket;
+      m_configuration.AWS_Region            = config.AWS_Region;
+      m_configuration.Database_file         = config.Database_file;
+      m_configuration.Download_Full_Paths   = config.Download_Full_Paths;
+      m_configuration.Export_Full_Paths     = config.Export_Full_Paths;
+    }
   }
 }
 
@@ -263,6 +297,9 @@ void MainWindow::refreshView()
 void MainWindow::showEvent(QShowEvent* e)
 {
   QMainWindow::showEvent(e);
+
+  auto width = m_treeView->width();
+  m_treeView->setColumnWidth(0, width*0.75);
 
   if(!m_configuration.isValid())
   {

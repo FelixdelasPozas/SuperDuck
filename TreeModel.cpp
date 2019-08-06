@@ -151,7 +151,7 @@ Qt::ItemFlags TreeModel::flags(const QModelIndex& index) const
 {
   if (index.isValid())
   {
-    return Qt::ItemIsEnabled|Qt::ItemIsSelectable|Qt::ItemIsUserCheckable | QAbstractItemModel::flags(index);
+    return Qt::ItemIsEnabled|Qt::ItemIsUserCheckable | QAbstractItemModel::flags(index);
   }
 
   return Qt::NoItemFlags;
@@ -167,9 +167,8 @@ bool TreeModel::setData(const QModelIndex& index, const QVariant& value, int rol
 
     emit dataChanged(index, index, QVector<int>(Qt::CheckStateRole));
 
-    emitDataChanged(index);
-
-    QApplication::processEvents();
+    auto rowsNum = rowCount(index);
+    if(rowsNum > 0) emitDataChanged(index, rowsNum);
 
     return true;
   }
@@ -191,17 +190,17 @@ Item* TreeModel::getItem(const QModelIndex& index) const
 }
 
 //-----------------------------------------------------------------------------
-void TreeModel::emitDataChanged(const QModelIndex& index)
+void TreeModel::emitDataChanged(const QModelIndex& index, const int rowsCount)
 {
-  auto maxRow = rowCount(index);
-
-  if(maxRow > 0)
+  if(rowsCount > 0)
   {
-    emit dataChanged(index.child(0, 0), index.child(maxRow-1, 0), QVector<int>(Qt::CheckStateRole));
+    emit dataChanged(index.child(0, 0), index.child(rowsCount-1, 0), QVector<int>(Qt::CheckStateRole));
 
-    for (int i = 0; i != rowCount(index); ++i)
+    for (int i = 0; i < rowsCount; ++i)
     {
-      emitDataChanged(index.child(i,  0));
+      auto child = index.child(i, 0);
+      auto count = rowCount(child);
+      if(count > 0) emitDataChanged(child, count);
     }
   }
 }
@@ -227,4 +226,48 @@ bool FilterTreeModelProxy::filterAcceptsRow(int source_row, const QModelIndex& s
   }
 
   return false;
+}
+
+//-----------------------------------------------------------------------------
+bool FilterTreeModelProxy::setData(const QModelIndex& index, const QVariant& value, int role)
+{
+  auto result = QSortFilterProxyModel::setData(index, value, role);
+
+  QApplication::processEvents();
+
+  if(result)
+  {
+    emit dataChanged(index, index, QVector<int>(role));
+
+    auto rowsNum = rowCount(index);
+    if(rowsNum > 0) emitDataChanged(index, rowsNum);
+  }
+
+  return result;
+}
+
+//-----------------------------------------------------------------------------
+void FilterTreeModelProxy::setFilterFixedString(const QString& pattern)
+{
+  beginResetModel();
+
+  QSortFilterProxyModel::setFilterFixedString(pattern);
+
+  endResetModel();
+}
+
+//-----------------------------------------------------------------------------
+void FilterTreeModelProxy::emitDataChanged(const QModelIndex& index, const int rowsCount)
+{
+  if(rowsCount > 0)
+  {
+    emit dataChanged(index.child(0, 0), index.child(rowsCount-1, 0), QVector<int>(Qt::CheckStateRole));
+
+    for (int i = 0; i < rowsCount; ++i)
+    {
+      auto child = index.child(i, 0);
+      auto count = rowCount(child);
+      if(count > 0) emitDataChanged(child, count);
+    }
+  }
 }

@@ -38,6 +38,8 @@ class TreeModel
     Q_OBJECT
   public:
     /** \brief TreeModel class constructor.
+     * \param[in] items List of created items.
+     * \param[in] parent Raw pointer of the object parent of this one.
      *
      */
     explicit TreeModel(ItemsVector &items, QObject *parent = nullptr);
@@ -66,12 +68,13 @@ class TreeModel
   private:
     /** \brief Emits the data changed signal for all children of the given index.
      * \param[in] index QModelIndex struct.
+     * \param[in] rowsCount Number of childs of index.
      *
      */
-    void emitDataChanged(const QModelIndex &index);
+    void emitDataChanged(const QModelIndex &index, const int rowsCount);
 
-    ItemsVector      &m_items;        /** reference to items list.  */
-    QFileIconProvider m_iconProvider; /** icons provider.           */
+    ItemsVector      &m_items;        /** reference to items list. */
+    QFileIconProvider m_iconProvider; /** icons provider.          */
 };
 
 /** \class FilterTreeModelProxy
@@ -94,8 +97,22 @@ class FilterTreeModelProxy
      */
     virtual ~FilterTreeModelProxy()
     {};
+
+    virtual bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
+
+  public slots:
+    void setFilterFixedString(const QString &pattern);
+
   protected:
-      virtual bool filterAcceptsRow(int source_row, const QModelIndex &source_parent) const override;
+    virtual bool filterAcceptsRow(int source_row, const QModelIndex &source_parent) const override;
+
+  private:
+    /** \brief Emits the data changed signal for all children of the given index.
+     * \param[in] index QModelIndex struct.
+     * \param[in] rowsCount Number of childs of index.
+     *
+     */
+    void emitDataChanged(const QModelIndex &index, const int rowsCount);
 };
 
 #endif // TREEMODEL_H_
