@@ -21,6 +21,7 @@
 #include <MainWindow.h>
 #include <ListExportUtils.h>
 #include <AWSUtils.h>
+#include <SettingsDialog.h>
 
 // C++
 #include <fstream>
@@ -32,18 +33,20 @@
 #include <QDateTime>
 #include <QFileDialog>
 #include <QStandardPaths>
+#include <QTimer>
 
 const QString STATE    = "State";
 const QString GEOMETRY = "Geometry";
 
 //-----------------------------------------------------------------------------
-MainWindow::MainWindow(ItemFactory* factory, QWidget* parent, Qt::WindowFlags flags)
+MainWindow::MainWindow(Utils::Configuration &configuration, ItemFactory* factory, QWidget* parent, Qt::WindowFlags flags)
 : QMainWindow(parent, flags)
 , m_factory{factory}
+, m_configuration(configuration)
 {
   setupUi(this);
 
-  restoreSettings();
+  restoreConfiguration();
 
   actionCreate_directory->setEnabled(false);
   actionDelete->setEnabled(false);
@@ -70,7 +73,7 @@ MainWindow::MainWindow(ItemFactory* factory, QWidget* parent, Qt::WindowFlags fl
 //-----------------------------------------------------------------------------
 MainWindow::~MainWindow()
 {
-  saveSettings();
+  saveConfiguration();
 
   if(m_factory->hasBeenModified())
   {
@@ -81,9 +84,9 @@ MainWindow::~MainWindow()
 }
 
 //-----------------------------------------------------------------------------
-void MainWindow::restoreSettings()
+void MainWindow::restoreConfiguration()
 {
-  QSettings settings("ElPato.ini", QSettings::IniFormat);
+  QSettings settings(Utils::dataPath() + QDir::separator() + "SuperPato.ini", QSettings::IniFormat);
 
   if(settings.contains(STATE))
   {
@@ -99,9 +102,9 @@ void MainWindow::restoreSettings()
 }
 
 //-----------------------------------------------------------------------------
-void MainWindow::saveSettings()
+void MainWindow::saveConfiguration()
 {
-  QSettings settings("ElPato.ini", QSettings::IniFormat);
+  QSettings settings(Utils::dataPath() + QDir::separator() + "SuperPato.ini", QSettings::IniFormat);
 
   settings.setValue(STATE, saveState());
   settings.setValue(GEOMETRY, saveGeometry());
@@ -192,6 +195,7 @@ void MainWindow::onDownloadButtonTriggered()
 
   if(!dir.isEmpty())
   {
+    // TODO
     AWSUtils::listBucket();
   }
 }
@@ -199,7 +203,10 @@ void MainWindow::onDownloadButtonTriggered()
 //-----------------------------------------------------------------------------
 void MainWindow::onSettingsButtonTriggered()
 {
-  // TODO
+  SettingsDialog dialog(m_configuration, this);
+  dialog.exec();
+
+  m_configuration = dialog.configuration();
 }
 
 //-----------------------------------------------------------------------------
@@ -247,4 +254,26 @@ void MainWindow::refreshView()
 {
   m_treeView->update();
   m_treeView->repaint();
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::showEvent(QShowEvent* e)
+{
+  QMainWindow::showEvent(e);
+
+  if(!m_configuration.isValid())
+  {
+    QTimer::singleShot(0, this, SLOT(onInvalidConfiguration()));
+  }
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::onInvalidConfiguration()
+{
+  while(!m_configuration.isValid())
+  {
+    QMessageBox::information(this, QApplication::applicationName(), tr("AWS configuration is not valid!"));
+
+    onSettingsButtonTriggered();
+  }
 }

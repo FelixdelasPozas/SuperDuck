@@ -71,6 +71,8 @@ set (SOURCES
 	MainWindow.cpp
 	ListExportUtils.cpp
 	AWSUtils.cpp
+	SettingsDialog.cpp
+	Utils.cpp
 	main.cpp
 	)
   

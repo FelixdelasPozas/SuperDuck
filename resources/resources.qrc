@@ -27,5 +27,6 @@
 	<file>splash_frame_13.png</file>
 	<file>splash_frame_14.png</file>
 	<file>splash_frame_15.png</file>
+	<file>folder.svg</file>
   </qresource>
 </RCC>

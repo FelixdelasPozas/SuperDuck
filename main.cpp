@@ -21,6 +21,7 @@
 #include <SplashScreen.h>
 #include <ItemsTree.h>
 #include <MainWindow.h>
+#include <Utils.h>
 
 // Qt
 #include <QApplication>
@@ -32,6 +33,7 @@
 #include <QSplashScreen>
 #include <QObject>
 #include <QFile>
+#include <QDir>
 
 // C++
 #include <iostream>
@@ -187,6 +189,7 @@ int main(int argc, char **argv)
   qInstallMessageHandler(myMessageOutput);
 
   QApplication app(argc, argv);
+  app.setApplicationName("SuperPato");
 
   // allow only one instance running
   QSharedMemory guard;
@@ -205,18 +208,40 @@ int main(int argc, char **argv)
     return 0;
   }
 
+  Utils::Configuration configuration;
+  configuration.load();
+
   SplashScreen splash(&app);
-  splash.setMessage(QString("Loading database"));
+  splash.setMessage(QString("Locating database"));
   splash.show();
 
-  std::ifstream stream;
-  stream.open("dbData.txt", std::ios_base::in);
+  const auto dataPath = Utils::dataPath();
+
+  if(!QDir(dataPath).exists())
+  {
+    splash.setMessage(QString("Creating data directory"));
+    app.processEvents();
+
+    QDir().mkdir(dataPath);
+
+    if(configuration.Database_file.isEmpty())
+    {
+      QFile::copy(Utils::DATABASE_NAME, Utils::databaseFile());
+      configuration.Database_file = Utils::databaseFile();
+    }
+  }
+
+  std::ifstream istream;
+  istream.open(configuration.Database_file.toStdString(), std::ios_base::in);
 
   ItemFactory factory;
 
-  if(stream.is_open())
+  if(istream.is_open())
   {
-    factory.deserializeItems(stream, &splash, &app);
+    splash.setMessage(QString("Reading database"));
+    app.processEvents();
+
+    factory.deserializeItems(istream, &splash, &app);
   }
   else
   {
@@ -231,11 +256,23 @@ int main(int argc, char **argv)
     return 0;
   }
 
-  MainWindow application(&factory);
+  MainWindow application(configuration, &factory);
 
   splash.hide();
 
   application.show();
 
-  return app.exec();
+  auto result = app.exec();
+
+  configuration.save();
+
+  if(factory.hasBeenModified())
+  {
+    std::ofstream ostream;
+    ostream.open(configuration.Database_file.toStdString(), std::ios_base::in);
+
+    factory.serializeItems(ostream);
+  }
+
+  return result;
 }

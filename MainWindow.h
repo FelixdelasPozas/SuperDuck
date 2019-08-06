@@ -23,6 +23,7 @@
 // Project
 #include <ItemsTree.h>
 #include <TreeModel.h>
+#include <Utils.h>
 #include "ui_MainWindow.h"
 
 // Qt
@@ -39,14 +40,21 @@ class MainWindow
     Q_OBJECT
   public:
     /** \brief MainWindow class constructor.
+     * \param[in] configuration Application configuration struct.
+     * \param[in] factory Item factory.
+     * \param[in] parent Raw pointer of the widget parent of this one.
+     * \param[in] flags Qt window flags.
      *
      */
-    explicit MainWindow(ItemFactory *factory, QWidget *parent = nullptr, Qt::WindowFlags flags = Qt::WindowFlags());
+    explicit MainWindow(Utils::Configuration &configuration, ItemFactory *factory, QWidget *parent = nullptr, Qt::WindowFlags flags = Qt::WindowFlags());
 
     /** \brief MainWindow class virtual destructor.
      *
      */
     virtual ~MainWindow();
+
+  protected:
+    virtual void showEvent(QShowEvent *e) override;
 
   private slots:
     /** \brief Looks for selected items and writes an excel file to disk.
@@ -95,6 +103,11 @@ class MainWindow
      */
     void refreshView();
 
+    /** \brief Forces the user to add a valid configuration.
+     *
+     */
+    void onInvalidConfiguration();
+
   private:
     /** \brief Returns the list of selected files as pairs of full_name-size.
      *
@@ -104,20 +117,21 @@ class MainWindow
     /** \brief Helper method to restore application position and size.
      *
      */
-    void restoreSettings();
+    void restoreConfiguration();
 
     /** \brief Helper method to save application position and size.
      *
      */
-    void saveSettings();
+    void saveConfiguration();
 
     /** \brief Helper method to connect UI signals to their slots.
      *
      */
     void connectSignals();
 
-    ItemFactory          *m_factory; /** item factory pointer. */
-    FilterTreeModelProxy *m_filter;  /** tree model filter.    */
+    ItemFactory          *m_factory;       /** item factory pointer.      */
+    FilterTreeModelProxy *m_filter;        /** tree model filter.         */
+    Utils::Configuration &m_configuration; /** application configuration. */
 };
 
 #endif // MAINWINDOW_H_
