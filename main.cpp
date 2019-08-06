@@ -224,11 +224,12 @@ int main(int argc, char **argv)
 
     QDir().mkdir(dataPath);
 
-    if(configuration.Database_file.isEmpty())
-    {
-      QFile::copy(Utils::DATABASE_NAME, Utils::databaseFile());
-      configuration.Database_file = Utils::databaseFile();
-    }
+    QFile::copy(Utils::DATABASE_NAME, Utils::databaseFile());
+  }
+
+  if(configuration.Database_file.isEmpty())
+  {
+    configuration.Database_file = Utils::databaseFile();
   }
 
   std::ifstream istream;

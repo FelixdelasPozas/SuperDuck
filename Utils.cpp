@@ -24,7 +24,6 @@
 #include <QStandardPaths>
 #include <QDir>
 #include <QString>
-#include <QDebug>
 #include <QChar>
 #include <QSettings>
 

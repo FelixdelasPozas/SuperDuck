@@ -65,11 +65,20 @@ class SettingsDialog
      */
     void onFolderButtonClicked();
 
+    /** \brief Creates the AWS credentials file if the configuration is valid.
+     *
+     */
+    void createCredentialsFile();
   private:
     /** \brief Helper method to connect Ui signals to slots.
      *
      */
     void connectSignals();
+
+    /** \brief Modifies the UI based on the existence of AWS credentials file.
+     *
+     */
+    void checkCredentialsFile();
 };
 
 #endif // SETTINGSDIALOG_H_

@@ -204,9 +204,12 @@ void MainWindow::onDownloadButtonTriggered()
 void MainWindow::onSettingsButtonTriggered()
 {
   SettingsDialog dialog(m_configuration, this);
-  dialog.exec();
 
-  m_configuration = dialog.configuration();
+  if(dialog.exec() == QDialog::Accepted)
+  {
+    const auto config = dialog.configuration();
+    m_configuration = config;
+  }
 }
 
 //-----------------------------------------------------------------------------

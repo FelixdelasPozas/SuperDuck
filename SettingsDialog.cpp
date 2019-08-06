@@ -24,6 +24,7 @@
 // Qt
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QDir>
 
 const QStringList REGIONS = { "us-east-1", "us-east-2", "us-west-1", "us-west-2", "ca-central-1",
                               "eu-central-1", "eu-west-1", "eu-west-2", "eu-west-3", "eu-north-1",
@@ -47,6 +48,8 @@ SettingsDialog::SettingsDialog(Utils::Configuration &config, QWidget* parent, Qt
   m_exportPaths->setChecked(config.Export_Full_Paths);
 
   connectSignals();
+
+  checkCredentialsFile();
 }
 
 //-----------------------------------------------------------------------------
@@ -118,4 +121,59 @@ Utils::Configuration SettingsDialog::configuration() const
   config.Download_Full_Paths = m_downloadPaths->isChecked();
 
   return config;
+}
+
+//-----------------------------------------------------------------------------
+void SettingsDialog::checkCredentialsFile()
+{
+  auto homeDir = QDir(QDir::homePath());
+  auto credentialsExists = homeDir.exists(".aws/credentials");
+
+  m_credentialsFileGroup->setEnabled(!credentialsExists);
+
+  auto message = (credentialsExists ? tr("AWS credentials file exists.") : tr("AWS credentials file doesn't exists"));
+  m_credentialsFileLabel->setText(message);
+
+  if(!credentialsExists)
+  {
+    connect(m_creadentialsFileButton, SIGNAL(clicked(bool)), this, SLOT(createCredentialsFile()));
+  }
+}
+
+//-----------------------------------------------------------------------------
+void SettingsDialog::createCredentialsFile()
+{
+  auto key = m_keyId->text();
+  auto access_key = m_accessKey->text();
+
+  if(key.isEmpty() || key.length() < 20 || access_key.isEmpty() || access_key.length() < 40)
+  {
+    auto message = tr("The credentials fields are invalid.");
+    QMessageBox::critical(this, tr("Create AWS credentials file"), message);
+    return;
+  }
+
+  auto homeDir = QDir(QDir::homePath());
+  if(!homeDir.exists(".aws") && !homeDir.mkdir(".aws"))
+  {
+    auto message = tr("Unable to create AWS home directory.");
+    QMessageBox::critical(this, tr("Create AWS credentials file"), message);
+    return;
+  }
+
+  QFile awsFile(homeDir.absoluteFilePath(".aws/credentials"));
+
+  if(!awsFile.open(QIODevice::WriteOnly|QIODevice::Truncate))
+  {
+    auto message = tr("Unable to create AWS credentials file.");
+    QMessageBox::critical(this, tr("Create AWS credentials file"), message);
+    return;
+  }
+
+  awsFile.write("[default]\n");
+  awsFile.write(tr("aws_access_key_id = %1\n").arg(m_keyId->text()).toLatin1());
+  awsFile.write(tr("aws_secret_access_key = %1\n").arg(m_accessKey->text()).toLatin1());
+  awsFile.close();
+
+  checkCredentialsFile();
 }
