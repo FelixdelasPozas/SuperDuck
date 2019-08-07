@@ -31,6 +31,7 @@
 #include <fstream>
 #include <cassert>
 #include <algorithm>
+#include <iterator>
 
 //-----------------------------------------------------------------------------
 ItemFactory::ItemFactory()
@@ -61,7 +62,7 @@ unsigned long long int ItemFactory::count() const
 //-----------------------------------------------------------------------------
 ItemFactory::~ItemFactory()
 {
-  std::for_each(m_items.begin(), m_items.end(), [](Item *i) { if(i) delete i; });
+  std::for_each(begin(m_items), end(m_items), [](Item *i) { if(i) delete i; });
 }
 
 //-----------------------------------------------------------------------------
@@ -78,12 +79,9 @@ void ItemFactory::onItemDestroyed(QObject* obj)
   auto item = qobject_cast<Item *>(obj);
   if(item)
   {
-    if(item)
-    {
-      item->parent()->removeChild(item);
-    }
+    item->parent()->removeChild(item);
 
-    m_items.erase(std::remove(m_items.begin(), m_items.end(), item), m_items.end());
+    m_items.erase(std::remove(begin(m_items), end(m_items), item), end(m_items));
     m_modified = true;
   }
 }
@@ -147,7 +145,7 @@ Type Item::type() const
 }
 
 //-----------------------------------------------------------------------------
-Items Item::children() const
+Items Item::children()
 {
   return m_childs;
 }
@@ -157,8 +155,8 @@ void Item::addChild(Item* child)
 {
   if(child)
   {
-    m_childs << child;
-    std::sort(m_childs.begin(), m_childs.end(), lessThan);
+    m_childs.push_back(child);
+    std::sort(begin(m_childs), end(m_childs), lessThan);
   }
 }
 
@@ -168,7 +166,7 @@ void Item::setSelected(bool value)
   if(m_selected != value)
   {
     m_selected = value;
-    std::for_each(m_childs.begin(), m_childs.end(), [value](Item *i) { if(i) i->setSelected(value); });
+    std::for_each(begin(m_childs), end(m_childs), [value](Item *i) { if(i) i->setSelected(value); });
   }
 }
 
@@ -195,8 +193,8 @@ Item* find(const QString& name, Item* base)
   {
     auto children = base->children();
 
-    auto it = std::find_if(children.begin(), children.end(), [&name](Item *c) { if(c) return c->fullName() == name; return false; });
-    if(it == children.end())
+    auto it = std::find_if(children.cbegin(), children.cend(), [&name](Item *c) { return c && (c->fullName() == name); });
+    if(it == children.cend())
     {
       return find(name, base->parent());
     }
@@ -221,7 +219,7 @@ void Item::serializeState(std::ofstream& stream) const
 //-----------------------------------------------------------------------------
 void Item::serializeRelations(std::ofstream& stream) const
 {
-  if(m_type == Type::Directory && !m_childs.isEmpty())
+  if(m_type == Type::Directory && !m_childs.empty())
   {
     QStringList childIds; // children_ids
     std::for_each(m_childs.cbegin(), m_childs.cend(), [&childIds](const Item *c) {if(c) childIds << QString::fromStdString(std::to_string(c->id())); });
@@ -237,9 +235,13 @@ void Item::serializeRelations(std::ofstream& stream) const
 //-----------------------------------------------------------------------------
 void Item::removeChild(Item* child)
 {
-  if(child && m_childs.contains(child))
+  if(child)
   {
-    m_childs.removeAll(child);
+    auto it = std::find(m_childs.cbegin(), m_childs.cend(), child);
+    if(it != m_childs.cend())
+    {
+      m_childs.erase(it);
+    }
   }
 }
 
@@ -349,7 +351,7 @@ void ItemFactory::deserializeItems(std::ifstream& stream, SplashScreen *splash, 
         assert(cid < m_counter && id < m_counter && m_items[cid] != nullptr && m_items[id] != nullptr);
 
         m_items[cid]->m_parent = m_items[id];
-        m_items[id]->m_childs << m_items[cid];
+        m_items[id]->m_childs.push_back(m_items[cid]);
       }
     }
   }
@@ -359,9 +361,9 @@ void ItemFactory::deserializeItems(std::ifstream& stream, SplashScreen *splash, 
 
   auto sortChildren = [](Item *i)
   {
-    if(i->type() == Type::Directory) std::sort(i->m_childs.begin(), i->m_childs.end(), lessThan);
+    if(i->type() == Type::Directory) std::sort(begin(i->m_childs), end(i->m_childs), lessThan);
   };
-  std::for_each(m_items.begin(), m_items.end(), sortChildren);
+  std::for_each(begin(m_items), end(m_items), sortChildren);
 
   auto it = std::find_if(m_items.cbegin() + 1, m_items.cend(), [](Item *i){ return i && !i->parent() && i->id() != 0; });
   if(it != m_items.cend())
@@ -369,4 +371,28 @@ void ItemFactory::deserializeItems(std::ifstream& stream, SplashScreen *splash, 
     QMessageBox::critical(nullptr, "Database", "Error loading the database");
     exit(0);
   }
+}
+
+//-----------------------------------------------------------------------------
+unsigned long long Item::filesNumber() const
+{
+  if(m_type == Type::File) return 1;
+
+  unsigned long long count = 0;
+
+  std::for_each(m_childs.cbegin(), m_childs.cend(), [&count](const Item *i) { count += i->filesNumber(); });
+
+  return count;
+}
+
+//-----------------------------------------------------------------------------
+unsigned long long Item::directoriesNumber() const
+{
+  if(m_type == Type::File) return 0;
+
+  unsigned long long count = 1;
+
+  std::for_each(m_childs.cbegin(), m_childs.cend(), [&count](const Item *i) { count += i->directoriesNumber(); });
+
+  return count;
 }

@@ -42,7 +42,7 @@ class TreeModel
      * \param[in] parent Raw pointer of the object parent of this one.
      *
      */
-    explicit TreeModel(ItemsVector &items, QObject *parent = nullptr);
+    explicit TreeModel(Items &items, QObject *parent = nullptr);
 
     /** \brief TreeModel class virtual destructor.
      *
@@ -73,7 +73,7 @@ class TreeModel
      */
     void emitDataChanged(const QModelIndex &index, const int rowsCount);
 
-    ItemsVector      &m_items;        /** reference to items list. */
+    Items            &m_items;        /** reference to items list. */
     QFileIconProvider m_iconProvider; /** icons provider.          */
 };
 

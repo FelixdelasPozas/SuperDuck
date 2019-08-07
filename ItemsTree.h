@@ -32,8 +32,7 @@
 enum class Type: char { Directory = 0, File = 1 };
 
 class Item;
-using Items = QList<Item *>;
-using ItemsVector = std::vector<Item *>;
+using Items = std::vector<Item *>;
 
 class SplashScreen;
 class QApplication;
@@ -94,7 +93,7 @@ class ItemFactory
     /** \brief Returns a reference to the items vector.
      *
      */
-    ItemsVector &items()
+    Items &items()
     { return m_items; }
 
   private slots:
@@ -153,7 +152,7 @@ class Item
     /** \brief Returns the items inside this item. Or empty if it's a file.
      *
      */
-    Items children() const;
+    Items children();
 
     /** \brief Adds an item to the children list.
      * \param[in] child Item to add.
@@ -177,6 +176,16 @@ class Item
      *
      */
     long long int id() const;
+
+    /** \brief Returns the number of files in the item and subitems. 1 if a file.
+     *
+     */
+    unsigned long long filesNumber() const;
+
+    /** \brief Returns the number of directories in the item and subitems. 0 if a file.
+     *
+     */
+    unsigned long long directoriesNumber() const;
 
   private:
     /** \brief Item class constructor.
@@ -203,13 +212,13 @@ class Item
 
     friend class ItemFactory;
 
-    QString            m_name;     /** item name.                         */
-    Item              *m_parent;   /** pointer to item parent.            */
-    bool               m_selected; /** true if selected, false otherwise. */
-    unsigned long long m_size;     /** item size.                         */
-    Type               m_type;     /** item type.                         */
-    QList<Item *>      m_childs;   /** list of children items.            */
-    unsigned long long m_id;       /** item id.                           */
+    QString             m_name;     /** item name.                         */
+    Item               *m_parent;   /** pointer to item parent.            */
+    bool                m_selected; /** true if selected, false otherwise. */
+    unsigned long long  m_size;     /** item size.                         */
+    Type                m_type;     /** item type.                         */
+    std::vector<Item *> m_childs;   /** list of children items.            */
+    unsigned long long  m_id;       /** item id.                           */
 };
 
 /** \brief Less than method for sorting. Returns true if lhs < rhs.

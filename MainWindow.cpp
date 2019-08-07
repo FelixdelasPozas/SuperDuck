@@ -64,11 +64,15 @@ MainWindow::MainWindow(Utils::Configuration &configuration, ItemFactory* factory
   m_treeView->setAlternatingRowColors(true);
   m_treeView->setAnimated(true);
   m_treeView->setExpandsOnDoubleClick(true);
-  m_treeView->header()->resizeSections(QHeaderView::ResizeMode::ResizeToContents);
 
   connectSignals();
 
   connect(model, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &, const QVector<int> &)), this, SLOT(refreshView()));
+
+  m_statusLabel = new QLabel();
+  statusBar()->addWidget(m_statusLabel);
+
+  updateStatusLabel();
 }
 
 //-----------------------------------------------------------------------------
@@ -153,7 +157,6 @@ void MainWindow::onExportButtonTriggered()
       {
         auto name = p.first;
         const auto pos = p.first.find_last_of('/');
-        std::cout << "pos " << pos << std::endl;
         if(pos != std::string::npos)
         {
           name = p.first.substr(pos+1, p.first.length()-(pos+1));
@@ -298,9 +301,6 @@ void MainWindow::showEvent(QShowEvent* e)
 {
   QMainWindow::showEvent(e);
 
-  auto width = m_treeView->width();
-  m_treeView->setColumnWidth(0, width*0.75);
-
   if(!m_configuration.isValid())
   {
     QTimer::singleShot(0, this, SLOT(onInvalidConfiguration()));
@@ -316,4 +316,29 @@ void MainWindow::onInvalidConfiguration()
 
     onSettingsButtonTriggered();
   }
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::resizeEvent(QResizeEvent* e)
+{
+  QMainWindow::resizeEvent(e);
+
+  updateGeometry();
+  auto width = rect().width();
+
+  m_treeView->setColumnWidth(0, width*0.75);
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::updateStatusLabel()
+{
+  auto rootItem = m_factory->items().at(0);
+  m_statusLabel->setText(tr("%1 files in %2 directories totaling %3 bytes.").arg(rootItem->filesNumber()).arg(rootItem->directoriesNumber()).arg(rootItem->size()));
+
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::closeEvent(QCloseEvent* e)
+{
+  // TODO: stop amazon threads and quit application
 }

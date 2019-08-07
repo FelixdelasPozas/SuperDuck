@@ -24,7 +24,7 @@
 #include <QApplication>
 
 //-----------------------------------------------------------------------------
-TreeModel::TreeModel(ItemsVector& items, QObject* parent)
+TreeModel::TreeModel(Items &items, QObject* parent)
 : QAbstractItemModel(parent)
 , m_items(items)
 {
@@ -98,7 +98,8 @@ QVariant TreeModel::headerData(int section, Qt::Orientation orientation, int rol
 //-----------------------------------------------------------------------------
 QModelIndex TreeModel::index(int row, int column, const QModelIndex& parent) const
 {
-  if (!parent.isValid() && row < m_items[0]->children().size())
+  auto urow = static_cast<unsigned int>(row);
+  if (!parent.isValid() && urow < m_items[0]->children().size())
   {
     return createIndex(row, column, m_items[0]->children().at(row));
   }
@@ -107,7 +108,7 @@ QModelIndex TreeModel::index(int row, int column, const QModelIndex& parent) con
 
   if (!parentItem) return QModelIndex();
 
-  if(row < parentItem->children().size())
+  if(urow < parentItem->children().size())
   {
     return createIndex(row, column, parentItem->children().at(row));
   }
@@ -127,7 +128,12 @@ QModelIndex TreeModel::parent(const QModelIndex& index) const
 
   if(parentItem->id() == 0) return QModelIndex();
 
-  return createIndex(parentItem->children().indexOf(childItem), 0, parentItem);
+  auto children = parentItem->children();
+  auto it = std::find(children.cbegin(), children.cend(), childItem);
+
+  if(it == children.cend()) return QModelIndex();
+
+  return createIndex(std::distance(children.cbegin(), it), 0, parentItem);
 }
 
 //-----------------------------------------------------------------------------

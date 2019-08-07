@@ -107,6 +107,8 @@
    <addaction name="actionCreate_list"/>
    <addaction name="separator"/>
    <addaction name="actionSettings"/>
+   <addaction name="separator"/>
+   <addaction name="actionExit_application"/>
   </widget>
   <action name="actionDownload">
    <property name="icon">
@@ -117,10 +119,10 @@
     <string>Download</string>
    </property>
    <property name="toolTip">
-    <string>Download selected files</string>
+    <string>Download selected files.</string>
    </property>
    <property name="statusTip">
-    <string>Download selected files</string>
+    <string>Download selected files.</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+D</string>
@@ -177,7 +179,7 @@
     <string>Upload</string>
    </property>
    <property name="toolTip">
-    <string>Upload files.</string>
+    <string>Upload files...</string>
    </property>
    <property name="statusTip">
     <string>Upload files...</string>
@@ -213,9 +215,47 @@
     <string>Delete selected objects.</string>
    </property>
   </action>
+  <action name="actionExit_application">
+   <property name="icon">
+    <iconset resource="resources/resources.qrc">
+     <normaloff>:/Pato/exit.svg</normaloff>:/Pato/exit.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Exit application.</string>
+   </property>
+   <property name="iconText">
+    <string>Exit application.</string>
+   </property>
+   <property name="toolTip">
+    <string>Exit application.</string>
+   </property>
+   <property name="statusTip">
+    <string>Exit application.</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
  </widget>
  <resources>
   <include location="resources/resources.qrc"/>
  </resources>
- <connections/>
+ <connections>
+  <connection>
+   <sender>actionExit_application</sender>
+   <signal>triggered()</signal>
+   <receiver>ElPato</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

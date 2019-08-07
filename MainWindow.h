@@ -55,6 +55,8 @@ class MainWindow
 
   protected:
     virtual void showEvent(QShowEvent *e) override;
+    virtual void resizeEvent(QResizeEvent *e) override;
+    virtual void closeEvent(QCloseEvent *e) override;
 
   private slots:
     /** \brief Looks for selected items and writes an excel or csv file to disk.
@@ -129,9 +131,15 @@ class MainWindow
      */
     void connectSignals();
 
+    /** \brief Updates the statistics in the status bar.
+     *
+     */
+    void updateStatusLabel();
+
     ItemFactory          *m_factory;       /** item factory pointer.      */
     FilterTreeModelProxy *m_filter;        /** tree model filter.         */
     Utils::Configuration &m_configuration; /** application configuration. */
+    QLabel               *m_statusLabel;   /** status bar label.          */
 };
 
 #endif // MAINWINDOW_H_
