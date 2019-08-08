@@ -18,8 +18,8 @@
  */
 
 // Project
-#include <SettingsDialog.h>
-#include <Utils.h>
+#include <Dialogs/SettingsDialog.h>
+#include <Utils/Utils.h>
 
 // Qt
 #include <QFileDialog>
@@ -46,6 +46,8 @@ SettingsDialog::SettingsDialog(Utils::Configuration &config, QWidget* parent, Qt
   m_dbLine->setText(QDir::toNativeSeparators(config.Database_file));
   m_downloadPaths->setChecked(config.Download_Full_Paths);
   m_exportPaths->setChecked(config.Export_Full_Paths);
+  m_downloadLineEdit->setText(QDir::toNativeSeparators(config.DownloadPath));
+  m_disableDelete->setChecked(config.DisableDelete);
 
   connectSignals();
 
@@ -57,13 +59,17 @@ void SettingsDialog::onFolderButtonClicked()
 {
   auto dbFile = QFileDialog::getOpenFileName(this, tr("Select database file"), Utils::databaseFile(), tr("Text files (*.txt)"));
 
-  if(!dbFile.isEmpty() && !Utils::isDatabaseFile(dbFile))
+  if(!dbFile.isEmpty())
   {
-    QMessageBox::critical(this, tr("Select database file"), tr("'%1' does not appear to be a valid database file.").arg(dbFile));
-  }
-  else
-  {
-    m_dbLine->setText(QDir::toNativeSeparators(dbFile));
+    QFileInfo info(dbFile);
+    if(info.exists() && info.isReadable() && info.isWritable())
+    {
+      m_dbLine->setText(QDir::toNativeSeparators(dbFile));
+    }
+    else
+    {
+      QMessageBox::critical(this, tr("Select database file"), tr("'%1' does not appear to be a valid database file.").arg(dbFile));
+    }
   }
 }
 
@@ -71,6 +77,7 @@ void SettingsDialog::onFolderButtonClicked()
 void SettingsDialog::connectSignals()
 {
   connect(m_dirButton, SIGNAL(clicked(bool)), this, SLOT(onFolderButtonClicked()));
+  connect(m_downloadButton, SIGNAL(clicked(bool)), this, SLOT(onDownloadPathButtonClicked()));
 }
 
 //-----------------------------------------------------------------------------
@@ -99,6 +106,12 @@ void SettingsDialog::accept()
     message = tr("'%1' does not appear to be a valid database file.").arg(m_dbLine->text());
   }
 
+  QFileInfo info(m_downloadLineEdit->text());
+  if(!info.exists() || !info.isWritable())
+  {
+    message = tr("'%1' does not appear to be a valid directory or can't write in it.").arg(m_downloadLineEdit->text());
+  }
+
   if(!message.isEmpty())
   {
     QMessageBox::critical(this, title, message);
@@ -119,6 +132,8 @@ Utils::Configuration SettingsDialog::configuration() const
   config.Database_file = QDir::fromNativeSeparators(m_dbLine->text());
   config.Export_Full_Paths = m_exportPaths->isChecked();
   config.Download_Full_Paths = m_downloadPaths->isChecked();
+  config.DownloadPath = QDir::fromNativeSeparators(m_downloadLineEdit->text());
+  config.DisableDelete = m_disableDelete->isChecked();
 
   return config;
 }
@@ -176,4 +191,24 @@ void SettingsDialog::createCredentialsFile()
   awsFile.close();
 
   checkCredentialsFile();
+}
+
+//-----------------------------------------------------------------------------
+void SettingsDialog::onDownloadPathButtonClicked()
+{
+  const auto title = tr("Select download directory");
+  auto path = QFileDialog::getExistingDirectory(this, title, m_downloadLineEdit->text(), QFileDialog::ShowDirsOnly);
+
+  if(!path.isEmpty())
+  {
+    QFileInfo info(path);
+    if(info.exists() && info.isDir() && info.isWritable())
+    {
+      m_downloadLineEdit->setText(QDir::toNativeSeparators(path));
+    }
+    else
+    {
+      QMessageBox::critical(this, title, tr("'%1' does not appear to be a valid directory or can't write in it.").arg(path));
+    }
+  }
 }

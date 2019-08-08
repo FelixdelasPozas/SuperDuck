@@ -18,10 +18,10 @@
  */
 
 // Project
-#include <SplashScreen.h>
-#include <ItemsTree.h>
+#include <Dialogs/SplashScreen.h>
+#include <Model/ItemsTree.h>
 #include <MainWindow.h>
-#include <Utils.h>
+#include <Utils/Utils.h>
 
 // Qt
 #include <QApplication>
@@ -40,7 +40,12 @@
 #include <unistd.h>
 #include <fstream>
 
-//-----------------------------------------------------------------
+/** \brief Old code to parse a simple ls -R of a directory tree.
+ * \param[in] splash SplashScreen dialog.
+ * \param[in] app QApplication instance.
+ * \param[in] factory Item factory object pointer.
+ *
+ */
 void deserializeListMethod(SplashScreen *splash, QApplication *app, ItemFactory &factory)
 {
   std::ifstream stream;

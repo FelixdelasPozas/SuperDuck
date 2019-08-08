@@ -19,9 +19,9 @@
 
 // Project
 #include <MainWindow.h>
-#include <ListExportUtils.h>
-#include <AWSUtils.h>
-#include <SettingsDialog.h>
+#include <Utils/ListExportUtils.h>
+#include <Dialogs/SettingsDialog.h>
+#include <Dialogs/ProgressDialog.h>
 
 // C++
 #include <fstream>
@@ -34,6 +34,11 @@
 #include <QFileDialog>
 #include <QStandardPaths>
 #include <QTimer>
+#include <QMenu>
+#include <QInputDialog>
+
+// AWS
+#include <aws/core/Aws.h>
 
 const QString STATE    = "State";
 const QString GEOMETRY = "Geometry";
@@ -48,26 +53,9 @@ MainWindow::MainWindow(Utils::Configuration &configuration, ItemFactory* factory
 
   restoreConfiguration();
 
-  actionCreate_directory->setEnabled(false);
-  actionDelete->setEnabled(false);
-  actionUpload->setEnabled(false);
-
-  auto model = new TreeModel(factory->items());
-
-  auto filter = new FilterTreeModelProxy();
-  filter->setSourceModel(model);
-  filter->setFilterCaseSensitivity(Qt::CaseInsensitive);
-  filter->setFilterKeyColumn(0);
-  filter->setFilterRole(Qt::DisplayRole);
-
-  m_treeView->setModel(filter);
-  m_treeView->setAlternatingRowColors(true);
-  m_treeView->setAnimated(true);
-  m_treeView->setExpandsOnDoubleClick(true);
+  configureTreeView();
 
   connectSignals();
-
-  connect(model, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &, const QVector<int> &)), this, SLOT(refreshView()));
 
   m_statusLabel = new QLabel();
   statusBar()->addWidget(m_statusLabel);
@@ -118,67 +106,45 @@ void MainWindow::saveConfiguration()
 //-----------------------------------------------------------------------------
 void MainWindow::connectSignals()
 {
-  connect(actionCreate_list, SIGNAL(triggered(bool)), this, SLOT(onExportButtonTriggered()));
-  connect(actionDownload, SIGNAL(triggered(bool)), this, SLOT(onDownloadButtonTriggered()));
   connect(actionSettings, SIGNAL(triggered(bool)), this, SLOT(onSettingsButtonTriggered()));
-  connect(actionUpload, SIGNAL(triggered(bool)), this, SLOT(onUploadButtonTriggered()));
-  connect(actionDelete, SIGNAL(triggered(bool)), this, SLOT(onDeleteButtonTriggered()));
-  connect(actionCreate_directory, SIGNAL(triggered(bool)), this, SLOT(onCreateButtonTriggered()));
   connect(m_searchLine, SIGNAL(textChanged(const QString &)), this, SLOT(onSearchTextChanged(const QString &)));
-
   connect(m_searchButton, SIGNAL(clicked(bool)), this, SLOT(onSearchButtonClicked()));
 }
 
 //-----------------------------------------------------------------------------
-void MainWindow::onExportButtonTriggered()
+void MainWindow::onExportActionTriggered()
 {
-  auto contents = selectedFiles();
+  auto selected = getSelectedFileList(m_configuration.Export_Full_Paths);
 
-  if(contents.empty())
+  if(selected.empty())
   {
-    QMessageBox::information(this, tr("Export list"), tr("No files selected!"));
+    QMessageBox::information(this, tr("Export list"), tr("No objects selected!"));
     return;
   }
 
   auto dateTimeString = QDateTime::currentDateTime().toString("dd.mm.yyyy-hh.mm");
-  auto suggestion = tr("Pato selected files %1.xls").arg(dateTimeString);
+  auto suggestion = tr("Pato selected objects %1.xls").arg(dateTimeString);
   auto path = QStandardPaths::standardLocations(QStandardPaths::DocumentsLocation).first();
-  auto filename = QFileDialog::getSaveFileName(this, tr("Save file list"), path + QDir::separator() + suggestion, tr("Excel files (*.xls);;CSV files (*.csv)"));
+  auto filename = QFileDialog::getSaveFileName(this, tr("Save file list"), QDir(m_configuration.DownloadPath).absoluteFilePath(suggestion), tr("Excel files (*.xls);;CSV files (*.csv)"));
 
   bool success = false;
   if (!filename.isEmpty())
   {
-    // prepare names if necessary
-    if(!m_configuration.Export_Full_Paths)
-    {
-      std::vector<std::pair<std::string, unsigned long long>> trimmedContents;
-
-      auto trimPath = [&trimmedContents](const std::pair<std::string, unsigned long long> &p)
-      {
-        auto name = p.first;
-        const auto pos = p.first.find_last_of('/');
-        if(pos != std::string::npos)
-        {
-          name = p.first.substr(pos+1, p.first.length()-(pos+1));
-        }
-        unsigned long long size = p.second;
-
-        trimmedContents.emplace_back(name, size);
-      };
-      std::for_each(contents.cbegin(), contents.cend(), trimPath);
-
-      contents = trimmedContents;
-    }
-
-    // save
     if (filename.endsWith(".csv", Qt::CaseInsensitive))
     {
-      success = ListExportUtils::saveToCSV(filename.toStdString(), contents);
+      success = ListExportUtils::saveToCSV(filename.toStdString(), selected);
     }
     else
     {
-      assert(filename.endsWith(".xls", Qt::CaseInsensitive));
-      success = ListExportUtils::saveToXLS(filename.toStdString(), contents);
+      if (filename.endsWith(".xls", Qt::CaseInsensitive))
+      {
+        success = ListExportUtils::saveToXLS(filename.toStdString(), selected);
+      }
+      else
+      {
+        QMessageBox::information(this, tr("Export list"), tr("Unknown format '%1'").arg(filename.split('.').last()));
+        return;
+      }
     }
 
     if (!success)
@@ -190,42 +156,32 @@ void MainWindow::onExportButtonTriggered()
 }
 
 //-----------------------------------------------------------------------------
-std::vector<std::pair<std::string, unsigned long long>> MainWindow::selectedFiles() const
+void MainWindow::onDownloadActionTriggered()
 {
-  std::vector<std::pair<std::string, unsigned long long>> contents;
-  auto &items = m_factory->items();
+  auto selected = getSelectedFileList();
 
-  auto searchSelectedFiles = [&contents](const Item *i)
+  if(selected.empty())
   {
-    if(i && i->isSelected() && i->type() == Type::File)
-    {
-      contents.emplace_back(i->fullName().toLatin1(), i->size());
-    }
-  };
-  std::for_each(items.cbegin(), items.cend(), searchSelectedFiles);
-
-  return contents;
-}
-
-//-----------------------------------------------------------------------------
-void MainWindow::onDownloadButtonTriggered()
-{
-  auto contents = selectedFiles();
-
-  if(contents.empty())
-  {
-    QMessageBox::information(this, tr("Download files"), tr("No files selected!"));
+    QMessageBox::information(this, tr("Download objects"), tr("No objects selected!"));
     return;
   }
 
-  auto defaultDir = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation).first();
-  auto dir = QFileDialog::getExistingDirectory(this, tr("Select download directory"), defaultDir, QFileDialog::ShowDirsOnly);
+  AWSUtils::Operation op;
+  op.bucket = AWSUtils::toAwsString(m_configuration.AWS_Bucket);
+  op.region = AWSUtils::toAwsString(m_configuration.AWS_Region);
+  op.type   = AWSUtils::OperationType::download;
+  op.credentials = Aws::Auth::AWSCredentials(AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Access_key_id)),
+                                             AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Secret_access_key)));
+  op.keys = std::move(selected);
+  op.useLogging = true;
 
-  if(!dir.isEmpty())
-  {
-    // TODO
-    AWSUtils::listBucket();
-  }
+  auto thread = new AWSUtils::S3Thread(op);
+  m_threads << thread;
+
+  connect(thread, SIGNAL(finished()), this, SLOT(onOperationFinished()));
+
+  ProgressDialog dialog(thread, this);
+  dialog.exec();
 }
 
 //-----------------------------------------------------------------------------
@@ -238,33 +194,143 @@ void MainWindow::onSettingsButtonTriggered()
     const auto config = dialog.configuration();
     if(config.isValid())
     {
-      m_configuration.AWS_Access_key_id     = config.AWS_Access_key_id;
-      m_configuration.AWS_Secret_access_key = config.AWS_Secret_access_key;
-      m_configuration.AWS_Bucket            = config.AWS_Bucket;
-      m_configuration.AWS_Region            = config.AWS_Region;
-      m_configuration.Database_file         = config.Database_file;
-      m_configuration.Download_Full_Paths   = config.Download_Full_Paths;
-      m_configuration.Export_Full_Paths     = config.Export_Full_Paths;
+      m_configuration = config;
     }
   }
 }
 
 //-----------------------------------------------------------------------------
-void MainWindow::onUploadButtonTriggered()
+void MainWindow::onUploadActionTriggered()
 {
-  // TODO
+  auto items = getSelectedItems();
+
+  if(items.size() > 1)
+  {
+    QMessageBox::information(this, tr("Upload to bucket"), tr("Invalid selection!"));
+    return;
+  }
+
+  auto files = QFileDialog::getOpenFileNames(this, tr("Upload files"), QDir::homePath());
+
+  if(!files.empty())
+  {
+    std::vector<std::pair<std::string, unsigned long long>> selected;
+
+    auto gatherFileInformation = [&selected](const QString &filename)
+    {
+      QFileInfo info(filename);
+      if(info.exists() && info.isReadable())
+      {
+        selected.emplace_back(info.absoluteFilePath().toStdString(), info.size());
+      }
+    };
+    std::for_each(files.cbegin(), files.cend(), gatherFileInformation);
+
+    if(selected.empty())
+    {
+      QMessageBox::information(this, tr("Upload to bucket"), tr("Cannot read the selected files!"));
+      return;
+    }
+
+    AWSUtils::Operation op;
+    op.bucket = AWSUtils::toAwsString(m_configuration.AWS_Bucket);
+    op.region = AWSUtils::toAwsString(m_configuration.AWS_Region);
+    op.type   = AWSUtils::OperationType::upload;
+    op.credentials = Aws::Auth::AWSCredentials(AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Access_key_id)),
+                                               AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Secret_access_key)));
+    op.keys = std::move(selected);
+    Aws::String destination;
+    if(!items.empty())
+    {
+      auto item = items.at(0);
+      const auto itemName = item->fullName();
+      destination = Aws::String(itemName.toStdString().c_str(), itemName.length());
+    }
+    op.useLogging = true;
+
+    auto thread = new AWSUtils::S3Thread(op);
+    m_threads << thread;
+
+    connect(thread, SIGNAL(finished()), this, SLOT(onOperationFinished()));
+
+    ProgressDialog dialog(thread, this);
+    dialog.exec();
+  }
 }
 
 //-----------------------------------------------------------------------------
-void MainWindow::onDeleteButtonTriggered()
+void MainWindow::onDeleteActionTriggered()
 {
-  // TODO
+  auto selected = getSelectedFileList();
+
+  if(selected.empty())
+  {
+    QMessageBox::information(this, tr("Delete objects"), tr("No objects selected!"));
+    return;
+  }
+
+  AWSUtils::Operation op;
+  op.bucket = AWSUtils::toAwsString(m_configuration.AWS_Bucket);
+  op.region = AWSUtils::toAwsString(m_configuration.AWS_Region);
+  op.type   = AWSUtils::OperationType::remove;
+  op.credentials = Aws::Auth::AWSCredentials(AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Access_key_id)),
+                                             AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Secret_access_key)));
+  op.keys = std::move(selected);
+  op.useLogging = true;
+
+  auto thread = new AWSUtils::S3Thread(op);
+  m_threads << thread;
+
+  connect(thread, SIGNAL(finished()), this, SLOT(onOperationFinished()));
+
+  ProgressDialog dialog(thread, this);
+  dialog.exec();
 }
 
 //-----------------------------------------------------------------------------
-void MainWindow::onCreateButtonTriggered()
+void MainWindow::onCreateActionTriggered()
 {
-  // TODO
+  auto items = getSelectedItems();
+
+  if(items.size() > 1)
+  {
+    QMessageBox::information(this, tr("Create directory"), tr("Invalid selection!"));
+    return;
+  }
+
+  bool ok;
+  auto directory = QInputDialog::getText(this, tr("Enter directory name"), tr("Directory:"), QLineEdit::Normal, QDir::home().dirName(), &ok);
+  if (!ok || directory.isEmpty() || directory.contains(Utils::DELIMITER))
+  {
+    QMessageBox::information(this, tr("Create directory"), tr("The name '%1' is invalid!").arg(directory));
+    return;
+  }
+
+  std::vector<std::pair<std::string, unsigned long long>> selected;
+
+  if(!items.empty())
+  {
+    auto name = items.at(0)->fullName();
+    selected.emplace_back(name.toStdString(), 0);
+  }
+
+  AWSUtils::Operation op;
+  op.bucket = AWSUtils::toAwsString(m_configuration.AWS_Bucket);
+  op.region = AWSUtils::toAwsString(m_configuration.AWS_Region);
+  op.type   = AWSUtils::OperationType::create;
+  op.credentials = Aws::Auth::AWSCredentials(AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Access_key_id)),
+                                             AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Secret_access_key)));
+  op.keys = selected;
+  op.parameters = Aws::String(directory.toStdString().c_str(), directory.length());
+  op.useLogging = true;
+
+  auto thread = new AWSUtils::S3Thread(op);
+  m_threads << thread;
+
+  connect(thread, SIGNAL(finished()), this, SLOT(onOperationFinished()));
+
+  ProgressDialog dialog(thread, this);
+  dialog.exec();
 }
 
 //-----------------------------------------------------------------------------
@@ -330,15 +396,222 @@ void MainWindow::resizeEvent(QResizeEvent* e)
 }
 
 //-----------------------------------------------------------------------------
+void MainWindow::onOperationFinished()
+{
+  auto thread = qobject_cast<AWSUtils::S3Thread *>(sender());
+  if(thread)
+  {
+    auto operation = thread->operation();
+
+    if(!thread->errors().isEmpty())
+    {
+      auto errorList = thread->errors();
+
+      QMessageBox msgBox(this);
+      msgBox.setWindowTitle(tr("%1 operation").arg(AWSUtils::operationTypeToText(operation.type)));
+      msgBox.setWindowIcon(QIcon(":/Pato/rubber_duck.svg"));
+      msgBox.setText(tr("The operation finished with errors."));
+      msgBox.setDetailedText(errorList.join('\n'));
+      msgBox.setIcon(QMessageBox::Icon::Critical);
+      msgBox.setStandardButtons(QMessageBox::Ok);
+
+      msgBox.exec();
+    }
+    else
+    {
+      switch(operation.type)
+      {
+        case AWSUtils::OperationType::create:
+          // TODO
+          updateStatusLabel();
+          break;
+        case AWSUtils::OperationType::remove:
+          // TODO
+          updateStatusLabel();
+          break;
+        case AWSUtils::OperationType::upload:
+          // TODO
+          updateStatusLabel();
+          break;
+        case AWSUtils::OperationType::download:
+        default:
+          break;
+      }
+    }
+
+    delete thread;
+  }
+  else
+  {
+    std::cout << "Error: onOperationFinished() -> Unable to identify sender.";
+  }
+}
+
+//-----------------------------------------------------------------------------
 void MainWindow::updateStatusLabel()
 {
   auto rootItem = m_factory->items().at(0);
-  m_statusLabel->setText(tr("%1 files in %2 directories totaling %3 bytes.").arg(rootItem->filesNumber()).arg(rootItem->directoriesNumber()).arg(rootItem->size()));
-
+  m_statusLabel->setText(tr("%1 objects in %2 directories totaling %3 bytes.").arg(rootItem->filesNumber()).arg(rootItem->directoriesNumber()).arg(rootItem->size()));
 }
 
 //-----------------------------------------------------------------------------
 void MainWindow::closeEvent(QCloseEvent* e)
 {
-  // TODO: stop amazon threads and quit application
+  if(m_threads.empty())
+  {
+    auto stopThread = [](AWSUtils::S3Thread *t)
+    {
+      if(!t->isFinished())
+      {
+        t->thread()->terminate();
+      }
+
+      delete t;
+    };
+    std::for_each(m_threads.begin(), m_threads.end(), stopThread);
+    m_threads.clear();
+  }
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::configureTreeView()
+{
+  auto model = new TreeModel(m_factory->items());
+  connect(model, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &, const QVector<int> &)), this, SLOT(refreshView()));
+
+  auto filter = new FilterTreeModelProxy();
+  filter->setSourceModel(model);
+  filter->setFilterCaseSensitivity(Qt::CaseInsensitive);
+  filter->setFilterKeyColumn(0);
+  filter->setFilterRole(Qt::DisplayRole);
+
+  m_treeView->setModel(filter);
+  m_treeView->setAlternatingRowColors(true);
+  m_treeView->setAnimated(true);
+  m_treeView->setExpandsOnDoubleClick(true);
+  m_treeView->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
+  m_treeView->setSelectionBehavior(QAbstractItemView::SelectionBehavior::SelectRows);
+  m_treeView->setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
+
+  connect(m_treeView, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(onContextMenuRequested(const QPoint &)));
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::onContextMenuRequested(const QPoint &pos)
+{
+  auto index = m_treeView->indexAt(pos);
+  auto items = getSelectedItems();
+
+  QMenu contextMenu;
+
+  QAction downloadAction(QIcon(":/Pato/cloud-download.svg"), "Download selected objects...");
+  QAction uploadAction(QIcon(":/Pato/cloud-upload.svg"), "Upload files...");
+  QAction createAction(QIcon(":/Pato/cloud-create.svg"), "Create subdirectory...");
+  QAction deleteAction(QIcon(":/Pato/cloud-delete.svg"), "Delete selected objects...");
+  QAction exportAction(QIcon(":/Pato/excel.svg"), "Export object list...");
+
+  connect(&downloadAction, SIGNAL(triggered()), this, SLOT(onDownloadActionTriggered()));
+  connect(&uploadAction,   SIGNAL(triggered()), this, SLOT(onUploadActionTriggered()));
+  connect(&createAction,   SIGNAL(triggered()), this, SLOT(onCreateActionTriggered()));
+  connect(&deleteAction,   SIGNAL(triggered()), this, SLOT(onDeleteActionTriggered()));
+  connect(&exportAction,   SIGNAL(triggered()), this, SLOT(onExportActionTriggered()));
+
+  contextMenu.addAction(&downloadAction);
+  contextMenu.addAction(&uploadAction);
+  contextMenu.addAction(&createAction);
+  contextMenu.addAction(&deleteAction);
+  contextMenu.addAction(&exportAction);
+
+  if(!index.isValid())
+  {
+    downloadAction.setEnabled(false);
+    uploadAction.setText("Upload files to 'root'");
+    createAction.setText("Create subdirectory in 'root'");
+    deleteAction.setEnabled(false);
+  }
+  else
+  {
+    if(items.size() == 1)
+    {
+      auto item = items.at(0);
+      const auto itemName = item->name();
+      if(isDirectory(item))
+      {
+        contextMenu.setTitle(itemName);
+        downloadAction.setText(tr("Download objects in '%1'").arg(itemName));
+        uploadAction.setText(tr("Upload files to '%1'").arg(itemName));
+        createAction.setText(tr("Create subdirectory in '%1'").arg(itemName));
+        deleteAction.setText(tr("Delete '%1' and its contents").arg(itemName));
+      }
+      else
+      {
+        downloadAction.setText(tr("Donwload '%1'").arg(itemName));
+        uploadAction.setEnabled(false);
+        createAction.setEnabled(false);
+        deleteAction.setText(tr("Delete '%1'").arg(itemName));
+      }
+    }
+    else
+    {
+      uploadAction.setEnabled(false);
+      createAction.setEnabled(false);
+    }
+
+    deleteAction.setEnabled(!m_configuration.DisableDelete);
+  }
+
+  contextMenu.exec(QCursor::pos());
+}
+
+//-----------------------------------------------------------------------------
+Items MainWindow::getSelectedItems() const
+{
+  Items items;
+  QModelIndexList validIndexes, validFilterIndexes;
+
+  auto selectedFilterIndexes = m_treeView->selectionModel()->selectedIndexes();
+  std::for_each(selectedFilterIndexes.cbegin(), selectedFilterIndexes.cend(), [&validFilterIndexes](const QModelIndex &i) { if(i.isValid() && i.column() == 0) validFilterIndexes << i; });
+
+  if(!validFilterIndexes.isEmpty())
+  {
+    auto filterModel = qobject_cast<FilterTreeModelProxy *>(m_treeView->model());
+    if(filterModel)
+    {
+      auto mapIndexesToSource = [&filterModel, &validIndexes](const QModelIndex &i) { auto si = filterModel->mapToSource(i); if(si.isValid()) validIndexes << si; };
+      std::for_each(validFilterIndexes.cbegin(), validFilterIndexes.cend(), mapIndexesToSource);
+
+      if(!validIndexes.isEmpty())
+      {
+        auto indexesToItems = [&items](const QModelIndex &i){ auto item = static_cast<Item *>(i.internalPointer()); if(item) items.push_back(item); };
+        std::for_each(validIndexes.cbegin(), validIndexes.cend(), indexesToItems);
+      }
+    }
+  }
+
+  return items;
+}
+
+//-----------------------------------------------------------------------------
+std::vector<std::pair<std::string, unsigned long long>> MainWindow::getSelectedFileList(bool useFullNames) const
+{
+  auto items = getSelectedItems();
+
+  std::vector<std::pair<std::string, unsigned long long>> selected;
+
+  std::function<void(Item *)> searchSelectedFiles = [&selected, &searchSelectedFiles, this, useFullNames](Item *i)
+  {
+    if(i->type() == Type::File)
+    {
+      const auto name = useFullNames ? i->fullName() : i->name();
+      selected.emplace_back(name.toStdString(), i->size());
+    }
+    else
+    {
+      auto children = i->children();
+      std::for_each(begin(children), end(children), searchSelectedFiles);
+    }
+  };
+  std::for_each(begin(items), end(items), searchSelectedFiles);
+
+  return selected;
 }

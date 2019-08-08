@@ -21,13 +21,17 @@
 #define MAINWINDOW_H_
 
 // Project
-#include <ItemsTree.h>
-#include <TreeModel.h>
-#include <Utils.h>
+#include <Model/ItemsTree.h>
+#include <Model/TreeModel.h>
+#include <Utils/Utils.h>
+#include <Utils/AWSUtils.h>
 #include "ui_MainWindow.h"
 
 // Qt
 #include <QMainWindow>
+
+// C++
+#include <map>
 
 /** \class MainWindow
  * \brief Implements the main window of the application.
@@ -62,12 +66,12 @@ class MainWindow
     /** \brief Looks for selected items and writes an excel or csv file to disk.
      *
      */
-    void onExportButtonTriggered();
+    void onExportActionTriggered();
 
     /** \brief Looks for selected items to download from S3 bucket.
      *
      */
-    void onDownloadButtonTriggered();
+    void onDownloadActionTriggered();
 
     /** \brief Shows the settings dialog.
      *
@@ -77,17 +81,17 @@ class MainWindow
     /** \brief Shows a file selection dialog and uploads the files to the S3 bucket.
      *
      */
-    void onUploadButtonTriggered();
+    void onUploadActionTriggered();
 
     /** \brief Deletes selected items from the S3 bucket.
      *
      */
-    void onDeleteButtonTriggered();
+    void onDeleteActionTriggered();
 
     /** \brief Creates a new directory on the S3 bucket.
      *
      */
-    void onCreateButtonTriggered();
+    void onCreateActionTriggered();
 
     /** \brief Updates the UI when the search text changes.
      * \param[in] text Filter text.
@@ -110,12 +114,18 @@ class MainWindow
      */
     void onInvalidConfiguration();
 
-  private:
-    /** \brief Returns the list of selected files as pairs of full_name-size.
+    /** \brief Gets the results of a finished operation.
      *
      */
-    std::vector<std::pair<std::string, unsigned long long>> selectedFiles() const;
+    void onOperationFinished();
 
+    /** \brief Prepares and shows a menu at the given position.
+     * \param[in] pos Position in the tree where a menu was requested.
+     *
+     */
+    void onContextMenuRequested(const QPoint &pos);
+
+  private:
     /** \brief Helper method to restore application position and size.
      *
      */
@@ -136,10 +146,27 @@ class MainWindow
      */
     void updateStatusLabel();
 
-    ItemFactory          *m_factory;       /** item factory pointer.      */
-    FilterTreeModelProxy *m_filter;        /** tree model filter.         */
-    Utils::Configuration &m_configuration; /** application configuration. */
-    QLabel               *m_statusLabel;   /** status bar label.          */
+    /** \brief Configures the tree view and the context menu.
+     *
+     */
+    void configureTreeView();
+
+    /** \brief Returns the list of items selected in the tree view.
+     *
+     */
+    Items getSelectedItems() const;
+
+    /** \brief Returns a list of pairs name-size of selected items and it's contents.
+     * \param[in] useFullNames True to generate the list using the full names, and false otherwise.
+     *
+     */
+    std::vector<std::pair<std::string, unsigned long long> > getSelectedFileList(bool useFullNames = true) const;
+
+    ItemFactory               *m_factory;       /** item factory pointer.                           */
+    FilterTreeModelProxy      *m_filter;        /** tree model filter.                              */
+    Utils::Configuration      &m_configuration; /** application configuration.                      */
+    QLabel                    *m_statusLabel;   /** status bar label.                               */
+    QList<AWSUtils::S3Thread*> m_threads;        /** list of threads executing or pending execution. */
 };
 
 #endif // MAINWINDOW_H_

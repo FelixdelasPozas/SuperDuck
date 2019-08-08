@@ -139,11 +139,6 @@ class Item
      */
     Item * parent() const;
 
-    /** \brief Returns true if the item is selected and false otherwise.
-     *
-     */
-    bool isSelected() const;
-
     /** \brief Returns the item type.
      *
      */
@@ -165,12 +160,6 @@ class Item
      *
      */
     void removeChild(Item *child);
-
-    /** \brief Selects/Unselects the item.
-     * \param[in] value True to select and false otherwise.
-     *
-     */
-    void setSelected(bool value);
 
     /** \brief Returns the item id.
      *
@@ -214,7 +203,6 @@ class Item
 
     QString             m_name;     /** item name.                         */
     Item               *m_parent;   /** pointer to item parent.            */
-    bool                m_selected; /** true if selected, false otherwise. */
     unsigned long long  m_size;     /** item size.                         */
     Type                m_type;     /** item type.                         */
     std::vector<Item *> m_childs;   /** list of children items.            */
@@ -232,5 +220,11 @@ bool lessThan(const Item *lhs, const Item *rhs);
  *
  */
 Item * find(const QString &name, Item *base);
+
+/** \brief Returns true if the item is a directory.
+ * \param[in] item Item pointer.
+ *
+ */
+bool isDirectory(const Item *item);
 
 #endif // ITEMSTREE_H_

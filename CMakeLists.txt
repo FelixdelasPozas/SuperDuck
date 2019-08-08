@@ -33,10 +33,12 @@ include_directories ( ${Qt5Widgets_INCLUDE_DIRS}
 #   -DCMAKE_PREFIX_PATH=/path/to/sdk_install
 find_package(AWSSDK REQUIRED COMPONENTS s3)
 set(S3_INCLUDE_DIRS "D:/Desarrollo/Bibliotecas/aws-sdk-cpp-1.7.154/aws-cpp-sdk-s3/include"
+                    "D:/Desarrollo/Bibliotecas/aws-sdk-cpp-1.7.154/aws-cpp-sdk-transfer/include"
                     "D:/Desarrollo/Bibliotecas/aws-sdk-cpp-1.7.154/aws-cpp-sdk-core/include")
 set(S3_LIBRARIES 
                  "D:/Desarrollo/Bibliotecas/aws-sdk-build/aws-cpp-sdk-core/libaws-cpp-sdk-core.dll"
                  "D:/Desarrollo/Bibliotecas/aws-sdk-build/aws-cpp-sdk-s3/libaws-cpp-sdk-s3.dll"
+                 "D:/Desarrollo/Bibliotecas/aws-sdk-build/aws-cpp-sdk-transfer/libaws-cpp-sdk-transfer.dll"
                  )
 include_directories(${S3_INCLUDE_DIRS})
 
@@ -65,14 +67,15 @@ qt5_add_resources(RESOURCES
 set (SOURCES 
 	${RESOURCES}
 	${PROJECT_BINARY_DIR}/ElPato.rc
-	SplashScreen.cpp
-	ItemsTree.cpp
-	TreeModel.cpp
+	Dialogs/SplashScreen.cpp
+	Dialogs/SettingsDialog.cpp
+	Dialogs/ProgressDialog.cpp
+	Model/ItemsTree.cpp
+	Model/TreeModel.cpp
 	MainWindow.cpp
-	ListExportUtils.cpp
-	AWSUtils.cpp
-	SettingsDialog.cpp
-	Utils.cpp
+	Utils/ListExportUtils.cpp
+	Utils/AWSUtils.cpp
+	Utils/Utils.cpp
 	main.cpp
 	)
   
@@ -88,8 +91,6 @@ set (LIBRARIES
 	version
 	)
 	
-Message(STATUS "AWSSDK_LINK_LIBS ${LIBRARIES}") 
-  
-add_executable(ElPato ${SOURCES})
-target_link_libraries (ElPato ${LIBRARIES})
+add_executable(SuperPato ${SOURCES})
+target_link_libraries (SuperPato ${LIBRARIES})
 	

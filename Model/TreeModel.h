@@ -21,7 +21,7 @@
 #define TREEMODEL_H_
 
 // Project
-#include <ItemsTree.h>
+#include <Model/ItemsTree.h>
 
 // Qt
 #include <QAbstractItemModel>
@@ -57,7 +57,6 @@ class TreeModel
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
     Qt::ItemFlags flags(const QModelIndex &index) const override;
-    bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
 
     /** \brief Returns the item associated with the given QModelIndex.
      * \param[in] index QModelIndex struct.
@@ -66,13 +65,6 @@ class TreeModel
     Item *getItem(const QModelIndex &index) const;
 
   private:
-    /** \brief Emits the data changed signal for all children of the given index.
-     * \param[in] index QModelIndex struct.
-     * \param[in] rowsCount Number of childs of index.
-     *
-     */
-    void emitDataChanged(const QModelIndex &index, const int rowsCount);
-
     Items            &m_items;        /** reference to items list. */
     QFileIconProvider m_iconProvider; /** icons provider.          */
 };
@@ -98,21 +90,11 @@ class FilterTreeModelProxy
     virtual ~FilterTreeModelProxy()
     {};
 
-    virtual bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
-
   public slots:
     void setFilterFixedString(const QString &pattern);
 
   protected:
     virtual bool filterAcceptsRow(int source_row, const QModelIndex &source_parent) const override;
-
-  private:
-    /** \brief Emits the data changed signal for all children of the given index.
-     * \param[in] index QModelIndex struct.
-     * \param[in] rowsCount Number of childs of index.
-     *
-     */
-    void emitDataChanged(const QModelIndex &index, const int rowsCount);
 };
 
 #endif // TREEMODEL_H_

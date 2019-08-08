@@ -18,8 +18,8 @@
  */
 
 // Project
-#include <ItemsTree.h>
-#include <SplashScreen.h>
+#include <Model/ItemsTree.h>
+#include <Dialogs/SplashScreen.h>
 
 // Qt
 #include <QDir>
@@ -32,6 +32,8 @@
 #include <cassert>
 #include <algorithm>
 #include <iterator>
+
+const QString DELIMITER = "/";
 
 //-----------------------------------------------------------------------------
 ItemFactory::ItemFactory()
@@ -90,7 +92,6 @@ void ItemFactory::onItemDestroyed(QObject* obj)
 Item::Item(const QString& name, Item* parent, const unsigned long long size, const Type type, unsigned long long id)
 : m_name    (name)
 , m_parent  {parent}
-, m_selected{false}
 , m_size    {size}
 , m_type    {type}
 , m_id      {id}
@@ -106,14 +107,14 @@ QString Item::name() const
 //-----------------------------------------------------------------------------
 QString Item::fullName() const
 {
-  QString completeName;
-  if(m_name.isEmpty()) return completeName;
+  QStringList paths;
 
-  if(m_parent) completeName = m_parent->fullName();
+  if(m_parent) paths << m_parent->fullName();
+  paths << name();
 
-  completeName += "/" + m_name;
+  paths.removeAll(QString(""));
 
-  return completeName;
+  return paths.join(DELIMITER);
 }
 
 //-----------------------------------------------------------------------------
@@ -130,12 +131,6 @@ unsigned long long Item::size() const
 Item* Item::parent() const
 {
   return m_parent;
-}
-
-//-----------------------------------------------------------------------------
-bool Item::isSelected() const
-{
-  return m_selected;
 }
 
 //-----------------------------------------------------------------------------
@@ -157,16 +152,6 @@ void Item::addChild(Item* child)
   {
     m_childs.push_back(child);
     std::sort(begin(m_childs), end(m_childs), lessThan);
-  }
-}
-
-//-----------------------------------------------------------------------------
-void Item::setSelected(bool value)
-{
-  if(m_selected != value)
-  {
-    m_selected = value;
-    std::for_each(begin(m_childs), end(m_childs), [value](Item *i) { if(i) i->setSelected(value); });
   }
 }
 
@@ -395,4 +380,10 @@ unsigned long long Item::directoriesNumber() const
   std::for_each(m_childs.cbegin(), m_childs.cend(), [&count](const Item *i) { count += i->directoriesNumber(); });
 
   return count;
+}
+
+//-----------------------------------------------------------------------------
+bool isDirectory(const Item* item)
+{
+  return item->type() == Type::Directory;
 }

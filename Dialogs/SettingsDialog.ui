@@ -7,26 +7,26 @@
     <x>0</x>
     <y>0</y>
     <width>551</width>
-    <height>361</height>
+    <height>435</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>551</width>
-    <height>361</height>
+    <height>435</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
     <width>551</width>
-    <height>361</height>
+    <height>435</height>
    </size>
   </property>
   <property name="windowTitle">
    <string>Settings</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="resources/resources.qrc">
+   <iconset resource="../resources/resources.qrc">
     <normaloff>:/Pato/rubber-duck.svg</normaloff>:/Pato/rubber-duck.svg</iconset>
   </property>
   <property name="modal">
@@ -184,6 +184,37 @@ QGroupBox::title {
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_3">
       <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QLabel" name="label_6">
+          <property name="text">
+           <string>Folder</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="m_downloadLineEdit"/>
+        </item>
+        <item>
+         <widget class="QToolButton" name="m_downloadButton">
+          <property name="minimumSize">
+           <size>
+            <width>20</width>
+            <height>20</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>...</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../resources/resources.qrc">
+            <normaloff>:/Pato/folder.svg</normaloff>:/Pato/folder.svg</iconset>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
        <widget class="QCheckBox" name="m_downloadPaths">
         <property name="text">
          <string>Recreate full path of files.</string>
@@ -235,7 +266,7 @@ QGroupBox::title {
          <string>...</string>
         </property>
         <property name="icon">
-         <iconset resource="resources/resources.qrc">
+         <iconset resource="../resources/resources.qrc">
           <normaloff>:/Pato/folder.svg</normaloff>:/Pato/folder.svg</iconset>
         </property>
         <property name="iconSize">
@@ -243,6 +274,39 @@ QGroupBox::title {
           <width>16</width>
           <height>16</height>
          </size>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_5">
+     <property name="styleSheet">
+      <string notr="true">QGroupBox {
+    border: 1px solid gray;
+    border-radius: 5px;
+    margin-top: 1ex; /* leave space at the top for the title */
+    font: bold;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top center; /* position at the top center */
+    padding: 0 2px;
+}</string>
+     </property>
+     <property name="title">
+      <string>Interface</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_4">
+      <item>
+       <widget class="QCheckBox" name="m_disableDelete">
+        <property name="text">
+         <string>Disable delete actions.</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
         </property>
        </widget>
       </item>
@@ -262,7 +326,7 @@ QGroupBox::title {
   </layout>
  </widget>
  <resources>
-  <include location="resources/resources.qrc"/>
+  <include location="../resources/resources.qrc"/>
  </resources>
  <connections>
   <connection>

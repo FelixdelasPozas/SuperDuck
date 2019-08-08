@@ -20,8 +20,14 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
+// Project
+#include <Model/ItemsTree.h>
+
 // Qt
 #include <QString>
+
+// C++
+#include <map>
 
 namespace Utils
 {
@@ -42,11 +48,18 @@ namespace Utils
   bool isDatabaseFile(const QString &filename);
 
   static const QString DATABASE_NAME = "dbData.txt";
+  static const QString DELIMITER =  "/";
 
   /** \brief Simple text obfuscation.
    * \param[in] text Text string.
    */
   QString rot13(const QString &text);
+
+  /** \brief Builds the map of files to transfer.
+   * \param[in] items List of items.
+   *
+   */
+  std::map<std::string, unsigned long long> processItems(const Items items);
 
   /** \struct Configuration
    * \brief Application configuration.
@@ -61,6 +74,8 @@ namespace Utils
     QString Database_file;         /** database file location on disk.                               */
     bool    Export_Full_Paths;     /** true to export files with full path, false otherwise.         */
     bool    Download_Full_Paths;   /** true to create paths when downloading files, false otherwise. */
+    bool    DisableDelete;         /** true to disable delete objects actions, false otherwise.      */
+    QString DownloadPath;          /** Path in which to save the files and folders.                  */
 
     /** \brief Returns true if its a valid configuration.
      *

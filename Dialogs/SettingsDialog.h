@@ -21,7 +21,7 @@
 #define SETTINGSDIALOG_H_
 
 // Project
-#include <Utils.h>
+#include <Utils/Utils.h>
 #include "ui_SettingsDialog.h"
 
 // Qt
@@ -69,6 +69,11 @@ class SettingsDialog
      *
      */
     void createCredentialsFile();
+
+    /** \brief Opens a folder selection dialog to locate default download path.
+     *
+     */
+    void onDownloadPathButtonClicked();
   private:
     /** \brief Helper method to connect Ui signals to slots.
      *

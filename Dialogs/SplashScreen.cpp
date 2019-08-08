@@ -18,7 +18,7 @@
  */
 
 // Project
-#include <SplashScreen.h>
+#include <Dialogs/SplashScreen.h>
 
 // Qt
 #include <QStyle>

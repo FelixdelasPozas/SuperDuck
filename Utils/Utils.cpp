@@ -18,7 +18,7 @@
  */
 
 // Project
-#include <Utils.h>
+#include <Utils/Utils.h>
 
 // Qt
 #include <QStandardPaths>
@@ -37,6 +37,8 @@ const QString AWS_REGION     = "AWS region";
 const QString EXPORT_PATHS   = "Export full paths";
 const QString DOWNLOAD_PATHS = "Download with full paths";
 const QString DATABASE_FILE  = "Database file";
+const QString DISABLE_DELETE = "Disable delete actions";
+const QString DOWNLOAD_PATH  = "Download path";
 
 //-----------------------------------------------------------------------------
 QString Utils::dataPath()
@@ -107,13 +109,15 @@ void Utils::Configuration::load()
 {
   QSettings settings(Utils::dataPath() + SEPARATOR + "SuperPato.ini", QSettings::IniFormat);
 
-  AWS_Access_key_id     = settings.value(AWS_KEY_ID, QString()).toString();
+  AWS_Access_key_id     = settings.value(AWS_KEY_ID,     QString()).toString();
   AWS_Secret_access_key = settings.value(AWS_SECRET_KEY, QString()).toString();
-  AWS_Bucket            = settings.value(AWS_BUCKET, QString()).toString();
-  AWS_Region            = settings.value(AWS_REGION, QString()).toString();
-  Database_file         = settings.value(DATABASE_FILE, Utils::databaseFile()).toString();
+  AWS_Bucket            = settings.value(AWS_BUCKET,     QString()).toString();
+  AWS_Region            = settings.value(AWS_REGION,     QString()).toString();
+  Database_file         = settings.value(DATABASE_FILE,  Utils::databaseFile()).toString();
   Download_Full_Paths   = settings.value(DOWNLOAD_PATHS, false).toBool();
-  Export_Full_Paths     = settings.value(EXPORT_PATHS, true).toBool();
+  Export_Full_Paths     = settings.value(EXPORT_PATHS,   true).toBool();
+  DisableDelete         = settings.value(DISABLE_DELETE, true).toBool();
+  DownloadPath          = settings.value(DOWNLOAD_PATH,  QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)).toString();
 }
 
 //-----------------------------------------------------------------------------
@@ -121,11 +125,29 @@ void Utils::Configuration::save()
 {
   QSettings settings(Utils::dataPath() + SEPARATOR + "SuperPato.ini", QSettings::IniFormat);
 
-  settings.setValue(AWS_KEY_ID, AWS_Access_key_id);
+  settings.setValue(AWS_KEY_ID,     AWS_Access_key_id);
   settings.setValue(AWS_SECRET_KEY, AWS_Secret_access_key);
-  settings.setValue(AWS_BUCKET, AWS_Bucket);
-  settings.setValue(AWS_REGION, AWS_Region);
-  settings.setValue(DATABASE_FILE, Database_file);
+  settings.setValue(AWS_BUCKET,     AWS_Bucket);
+  settings.setValue(AWS_REGION,     AWS_Region);
+  settings.setValue(DATABASE_FILE,  Database_file);
   settings.setValue(DOWNLOAD_PATHS, Download_Full_Paths);
-  settings.setValue(EXPORT_PATHS, Export_Full_Paths);
+  settings.setValue(EXPORT_PATHS,   Export_Full_Paths);
+  settings.setValue(DISABLE_DELETE, DisableDelete);
+  settings.setValue(DOWNLOAD_PATH,  DownloadPath);
+}
+
+//-----------------------------------------------------------------------------
+std::map<std::string, unsigned long long> Utils::processItems(const Items items)
+{
+  std::map<std::string, unsigned long long> result;
+
+  auto processSelection = [&result](const Item *i)
+  {
+    QString fullName = i->fullName() + (isDirectory(i) ? DELIMITER:"");
+
+    result.emplace(fullName.toStdString(), i->size());
+  };
+  std::for_each(items.cbegin(), items.cend(), processSelection);
+
+  return result;
 }

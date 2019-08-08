@@ -99,54 +99,29 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionDownload"/>
-   <addaction name="actionUpload"/>
-   <addaction name="actionCreate_directory"/>
-   <addaction name="actionDelete"/>
-   <addaction name="separator"/>
-   <addaction name="actionCreate_list"/>
-   <addaction name="separator"/>
    <addaction name="actionSettings"/>
    <addaction name="separator"/>
    <addaction name="actionExit_application"/>
   </widget>
-  <action name="actionDownload">
+  <action name="actionExit_application">
    <property name="icon">
     <iconset resource="resources/resources.qrc">
-     <normaloff>:/Pato/cloud-download.svg</normaloff>:/Pato/cloud-download.svg</iconset>
+     <normaloff>:/Pato/exit.svg</normaloff>:/Pato/exit.svg</iconset>
    </property>
    <property name="text">
-    <string>Download</string>
+    <string>Exit application.</string>
+   </property>
+   <property name="iconText">
+    <string>Exit application.</string>
    </property>
    <property name="toolTip">
-    <string>Download selected files.</string>
+    <string>Exit application.</string>
    </property>
    <property name="statusTip">
-    <string>Download selected files.</string>
+    <string>Exit application.</string>
    </property>
    <property name="shortcut">
-    <string>Ctrl+D</string>
-   </property>
-   <property name="visible">
-    <bool>true</bool>
-   </property>
-  </action>
-  <action name="actionCreate_list">
-   <property name="icon">
-    <iconset resource="resources/resources.qrc">
-     <normaloff>:/Pato/excel.svg</normaloff>:/Pato/excel.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Export list</string>
-   </property>
-   <property name="toolTip">
-    <string>Create an excel file or a CSV file with the list of selected files.</string>
-   </property>
-   <property name="statusTip">
-    <string>Create an excel file or a CSV file with the list of selected files.</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+L</string>
+    <string>Ctrl+Q</string>
    </property>
   </action>
   <action name="actionSettings">
@@ -168,72 +143,6 @@
    </property>
    <property name="menuRole">
     <enum>QAction::PreferencesRole</enum>
-   </property>
-  </action>
-  <action name="actionUpload">
-   <property name="icon">
-    <iconset resource="resources/resources.qrc">
-     <normaloff>:/Pato/cloud-upload.svg</normaloff>:/Pato/cloud-upload.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Upload</string>
-   </property>
-   <property name="toolTip">
-    <string>Upload files...</string>
-   </property>
-   <property name="statusTip">
-    <string>Upload files...</string>
-   </property>
-  </action>
-  <action name="actionCreate_directory">
-   <property name="icon">
-    <iconset resource="resources/resources.qrc">
-     <normaloff>:/Pato/cloud-create.svg</normaloff>:/Pato/cloud-create.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Create directory</string>
-   </property>
-   <property name="toolTip">
-    <string>Create a new directory inside the selected one.</string>
-   </property>
-   <property name="statusTip">
-    <string>Create a new directory inside the selected one.</string>
-   </property>
-  </action>
-  <action name="actionDelete">
-   <property name="icon">
-    <iconset resource="resources/resources.qrc">
-     <normaloff>:/Pato/cloud-delete.svg</normaloff>:/Pato/cloud-delete.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Delete</string>
-   </property>
-   <property name="toolTip">
-    <string>Delete selected objects.</string>
-   </property>
-   <property name="statusTip">
-    <string>Delete selected objects.</string>
-   </property>
-  </action>
-  <action name="actionExit_application">
-   <property name="icon">
-    <iconset resource="resources/resources.qrc">
-     <normaloff>:/Pato/exit.svg</normaloff>:/Pato/exit.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Exit application.</string>
-   </property>
-   <property name="iconText">
-    <string>Exit application.</string>
-   </property>
-   <property name="toolTip">
-    <string>Exit application.</string>
-   </property>
-   <property name="statusTip">
-    <string>Exit application.</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+Q</string>
    </property>
   </action>
  </widget>
