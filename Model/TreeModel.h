@@ -26,7 +26,6 @@
 // Qt
 #include <QAbstractItemModel>
 #include <QFileIconProvider>
-#include <QSortFilterProxyModel>
 
 /** \class TreeModel
  * \brief Implements a Qt model for the tree structure.
@@ -88,15 +87,20 @@ class TreeModel
      */
     void setFilter(const QString &text);
 
+    /** \brief Returns the index of the given item.
+     * \param[in] item Item pointer.
+     *
+     */
+    QModelIndex indexOf(Item *item) const;
   private:
     /** \brief Counts and returns the visible child and the given row.
      *
      */
     Item *findVisibleItem(Item *parent, int row) const;
 
-    ItemFactory      *m_factory;      /** Item factory object. */
-    QFileIconProvider m_iconProvider; /** icons provider.      */
-    QString           m_filter;       /** text to filter by.   */
+    ItemFactory      *m_factory;      /** Item factory object.           */
+    QFileIconProvider m_iconProvider; /** icons provider.                */
+    QString           m_filter;       /** text to filter by.             */
 };
 
 #endif // TREEMODEL_H_

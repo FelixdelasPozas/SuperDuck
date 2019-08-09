@@ -349,16 +349,27 @@ void MainWindow::onSearchButtonClicked()
 {
   QApplication::setOverrideCursor(Qt::WaitCursor);
 
+  auto selectedIndexes = m_treeView->selectionModel()->selectedIndexes();
+
   m_model->setFilter(m_searchLine->text());
 
-  QApplication::restoreOverrideCursor();
-}
+  restoreExpandedIndexes();
 
-//-----------------------------------------------------------------------------
-void MainWindow::refreshView()
-{
-  m_treeView->update();
-  m_treeView->repaint();
+  QModelIndex lastIndex;
+  auto selectIndex = [this, &lastIndex](const QModelIndex &i)
+  {
+    auto item = static_cast<Item *>(i.internalPointer());
+    auto index = m_model->indexOf(item);
+    if(index.isValid())
+    {
+      m_treeView->selectionModel()->select(index, QItemSelectionModel::SelectionFlag::Select);
+      lastIndex = index;
+    }
+  };
+  std::for_each(selectedIndexes.cbegin(), selectedIndexes.cend(), selectIndex);
+  if(lastIndex.isValid()) m_treeView->scrollTo(lastIndex, QAbstractItemView::ScrollHint::EnsureVisible);
+
+  QApplication::restoreOverrideCursor();
 }
 
 //-----------------------------------------------------------------------------
@@ -471,7 +482,6 @@ void MainWindow::closeEvent(QCloseEvent* e)
 void MainWindow::configureTreeView()
 {
   m_model = new TreeModel(m_factory);
-  connect(m_model, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &, const QVector<int> &)), this, SLOT(refreshView()));
 
   m_treeView->setModel(m_model);
   m_treeView->setAlternatingRowColors(true);
@@ -482,6 +492,8 @@ void MainWindow::configureTreeView()
   m_treeView->setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
 
   connect(m_treeView, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(onContextMenuRequested(const QPoint &)));
+  connect(m_treeView, SIGNAL(collapsed(const QModelIndex &)), this, SLOT(onIndexCollapsed(const QModelIndex &)));
+  connect(m_treeView, SIGNAL(expanded(const QModelIndex &)), this, SLOT(onIndexExpanded(const QModelIndex &)));
 }
 
 //-----------------------------------------------------------------------------
@@ -608,3 +620,33 @@ std::vector<std::pair<std::string, unsigned long long>> MainWindow::getSelectedF
   return selected;
 }
 
+//-----------------------------------------------------------------------------
+void MainWindow::onIndexExpanded(const QModelIndex& index)
+{
+  if(!m_expanded.contains(index)) m_expanded << index;
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::onIndexCollapsed(const QModelIndex& index)
+{
+  if(m_expanded.contains(index)) m_expanded.removeOne(index);
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::restoreExpandedIndexes()
+{
+  QModelIndexList newList;
+  auto expandIndex = [this, &newList](const QModelIndex &i)
+  {
+    auto item = static_cast<Item *>(i.internalPointer());
+    auto index = m_model->indexOf(item);
+    if(index.isValid())
+    {
+      newList << index;
+      m_treeView->expand(index);
+    }
+  };
+  std::for_each(m_expanded.cbegin(), m_expanded.cend(), expandIndex);
+
+  m_expanded = newList;
+}

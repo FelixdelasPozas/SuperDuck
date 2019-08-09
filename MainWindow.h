@@ -104,11 +104,6 @@ class MainWindow
      */
     void onSearchButtonClicked();
 
-    /** \brief Refreshes the tree view when an item changes state.
-     *
-     */
-    void refreshView();
-
     /** \brief Forces the user to add a valid configuration.
      *
      */
@@ -124,6 +119,18 @@ class MainWindow
      *
      */
     void onContextMenuRequested(const QPoint &pos);
+
+    /** \brief Stores the expanded index.
+     * \param[in] index QModelIndex struct.
+     *
+     */
+    void onIndexExpanded(const QModelIndex &index);
+
+    /** \brief Removes the index from the stored list.
+     * \param[in] index QModelIndex struct.
+     *
+     */
+    void onIndexCollapsed(const QModelIndex &index);
 
   private:
     /** \brief Helper method to restore application position and size.
@@ -156,17 +163,23 @@ class MainWindow
      */
     Items getSelectedItems() const;
 
+    /** \brief Expands all the nodes stored in the list.
+     *
+     */
+    void restoreExpandedIndexes();
+
     /** \brief Returns a list of pairs name-size of selected items and it's contents.
      * \param[in] useFullNames True to generate the list using the full names, and false otherwise.
      *
      */
     std::vector<std::pair<std::string, unsigned long long> > getSelectedFileList(bool useFullNames = true) const;
 
-    ItemFactory               *m_factory;       /** item factory pointer.                           */
-    TreeModel                 *m_model;         /** tree model for the items.                       */
-    Utils::Configuration      &m_configuration; /** application configuration.                      */
-    QLabel                    *m_statusLabel;   /** status bar label.                               */
-    QList<AWSUtils::S3Thread*> m_threads;        /** list of threads executing or pending execution. */
+    ItemFactory               *m_factory;       /** item factory pointer.                            */
+    TreeModel                 *m_model;         /** tree model for the items.                        */
+    Utils::Configuration      &m_configuration; /** application configuration.                       */
+    QLabel                    *m_statusLabel;   /** status bar label.                                */
+    QList<AWSUtils::S3Thread*> m_threads;       /** list of threads executing or pending execution.  */
+    QModelIndexList            m_expanded;      /** list of expanded nodes to store tree view state. */
 };
 
 #endif // MAINWINDOW_H_
