@@ -116,8 +116,7 @@ class Item
     /** \brief Item class destructor.
      *
      */
-    virtual ~Item()
-    {};
+    virtual ~Item();
 
     /** \brief Returns the item name
      *

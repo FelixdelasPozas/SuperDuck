@@ -48,7 +48,6 @@ namespace Utils
   bool isDatabaseFile(const QString &filename);
 
   static const QString DATABASE_NAME = "dbData.txt";
-  static const QString DELIMITER =  "/";
 
   /** \brief Simple text obfuscation.
    * \param[in] text Text string.

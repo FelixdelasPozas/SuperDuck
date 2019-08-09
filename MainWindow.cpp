@@ -173,6 +173,7 @@ void MainWindow::onDownloadActionTriggered()
   op.credentials = Aws::Auth::AWSCredentials(AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Access_key_id)),
                                              AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Secret_access_key)));
   op.keys = std::move(selected);
+  op.parameters = Aws::String(m_configuration.DownloadPath.toStdString().c_str(), m_configuration.DownloadPath.length());
   op.useLogging = true;
 
   auto thread = new AWSUtils::S3Thread(op);
@@ -210,6 +211,7 @@ void MainWindow::onUploadActionTriggered()
     return;
   }
 
+  auto path  = items.front()->fullName();
   auto files = QFileDialog::getOpenFileNames(this, tr("Upload files"), QDir::homePath());
 
   if(!files.empty())
@@ -239,13 +241,7 @@ void MainWindow::onUploadActionTriggered()
     op.credentials = Aws::Auth::AWSCredentials(AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Access_key_id)),
                                                AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Secret_access_key)));
     op.keys = std::move(selected);
-    Aws::String destination;
-    if(!items.empty())
-    {
-      auto item = items.at(0);
-      const auto itemName = item->fullName();
-      destination = Aws::String(itemName.toStdString().c_str(), itemName.length());
-    }
+    op.parameters = Aws::String(path.toStdString().c_str(), path.length());
     op.useLogging = true;
 
     auto thread = new AWSUtils::S3Thread(op);
@@ -267,6 +263,18 @@ void MainWindow::onDeleteActionTriggered()
   {
     QMessageBox::information(this, tr("Delete objects"), tr("No objects selected!"));
     return;
+  }
+
+  auto items = getSelectedItems();
+  if(items.size() == 1)
+  {
+    const auto item = items.front();
+    if(isDirectory(item) && item->children().size() == 0)
+    {
+      m_model->removeItem(item);
+
+      fixTreeView();
+    }
   }
 
   AWSUtils::Operation op;
@@ -299,38 +307,19 @@ void MainWindow::onCreateActionTriggered()
   }
 
   bool ok;
-  auto directory = QInputDialog::getText(this, tr("Enter directory name"), tr("Directory:"), QLineEdit::Normal, QDir::home().dirName(), &ok);
-  if (!ok || directory.isEmpty() || directory.contains(Utils::DELIMITER))
+  auto directory = QInputDialog::getText(this, tr("Enter directory name"), tr("Directory:"), QLineEdit::Normal, "New_Directory", &ok);
+  if(!ok || directory.isEmpty()) return;
+
+  if (directory.contains(AWSUtils::DELIMITER))
   {
-    QMessageBox::information(this, tr("Create directory"), tr("The name '%1' is invalid!").arg(directory));
+    QMessageBox::information(this, tr("Create directory"), tr("The name '%1' is invalid!\nMust not contain the '/' character.").arg(directory));
     return;
   }
 
-  std::vector<std::pair<std::string, unsigned long long>> selected;
+  auto parent = (items.empty() ? m_factory->items().at(0) : items.front());
+  m_model->createSubdirectory(parent, directory);
 
-  if(!items.empty())
-  {
-    auto name = items.at(0)->fullName();
-    selected.emplace_back(name.toStdString(), 0);
-  }
-
-  AWSUtils::Operation op;
-  op.bucket = AWSUtils::toAwsString(m_configuration.AWS_Bucket);
-  op.region = AWSUtils::toAwsString(m_configuration.AWS_Region);
-  op.type   = AWSUtils::OperationType::create;
-  op.credentials = Aws::Auth::AWSCredentials(AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Access_key_id)),
-                                             AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Secret_access_key)));
-  op.keys = selected;
-  op.parameters = Aws::String(directory.toStdString().c_str(), directory.length());
-  op.useLogging = true;
-
-  auto thread = new AWSUtils::S3Thread(op);
-  m_threads << thread;
-
-  connect(thread, SIGNAL(finished()), this, SLOT(onOperationFinished()));
-
-  ProgressDialog dialog(thread, this);
-  dialog.exec();
+  fixTreeView();
 }
 
 //-----------------------------------------------------------------------------
@@ -390,8 +379,7 @@ void MainWindow::resizeEvent(QResizeEvent* e)
   QMainWindow::resizeEvent(e);
 
   updateGeometry();
-  auto width = rect().width();
-
+  const auto width = rect().width();
   m_treeView->setColumnWidth(0, width*0.75);
 }
 
@@ -405,7 +393,7 @@ void MainWindow::onOperationFinished()
 
     if(!thread->errors().isEmpty())
     {
-      auto errorList = thread->errors();
+      const auto errorList = thread->errors();
 
       QMessageBox msgBox(this);
       msgBox.setWindowTitle(tr("%1 operation").arg(AWSUtils::operationTypeToText(operation.type)));
@@ -421,16 +409,14 @@ void MainWindow::onOperationFinished()
     {
       switch(operation.type)
       {
-        case AWSUtils::OperationType::create:
-          // TODO
-          updateStatusLabel();
-          break;
         case AWSUtils::OperationType::remove:
           // TODO
+          fixTreeView();
           updateStatusLabel();
           break;
         case AWSUtils::OperationType::upload:
           // TODO
+          fixTreeView();
           updateStatusLabel();
           break;
         case AWSUtils::OperationType::download:
@@ -476,13 +462,14 @@ void MainWindow::closeEvent(QCloseEvent* e)
 //-----------------------------------------------------------------------------
 void MainWindow::configureTreeView()
 {
-  auto model = new TreeModel(m_factory->items());
-  connect(model, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &, const QVector<int> &)), this, SLOT(refreshView()));
+  m_model = new TreeModel(m_factory);
+  connect(m_model, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &, const QVector<int> &)), this, SLOT(refreshView()));
 
   auto filter = new FilterTreeModelProxy();
-  filter->setSourceModel(model);
+  filter->setSourceModel(m_model);
   filter->setFilterCaseSensitivity(Qt::CaseInsensitive);
   filter->setFilterKeyColumn(0);
+  filter->setDynamicSortFilter(true);
   filter->setFilterRole(Qt::DisplayRole);
 
   m_treeView->setModel(filter);
@@ -542,6 +529,8 @@ void MainWindow::onContextMenuRequested(const QPoint &pos)
         uploadAction.setText(tr("Upload files to '%1'").arg(itemName));
         createAction.setText(tr("Create subdirectory in '%1'").arg(itemName));
         deleteAction.setText(tr("Delete '%1' and its contents").arg(itemName));
+
+        downloadAction.setEnabled(item->children().size() > 0);
       }
       else
       {
@@ -614,4 +603,18 @@ std::vector<std::pair<std::string, unsigned long long>> MainWindow::getSelectedF
   std::for_each(begin(items), end(items), searchSelectedFiles);
 
   return selected;
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::fixTreeView()
+{
+  // NOTE: this code is necessary because QSortFilterProxyModel doesn't update rows.
+  auto indexes = m_treeView->selectionModel()->selectedRows();
+  if(!indexes.isEmpty())
+  {
+    auto index = indexes.front();
+    const auto value = m_treeView->isExpanded(index);
+    m_treeView->setExpanded(index, !value);
+    m_treeView->setExpanded(index, value);
+  }
 }

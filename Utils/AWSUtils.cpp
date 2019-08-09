@@ -37,6 +37,7 @@ using namespace Aws;
 AWSUtils::S3Thread::S3Thread(Operation operation, QObject* parent)
 : QThread(parent)
 , m_operation(operation)
+, m_abort{false}
 {
 }
 
@@ -58,9 +59,6 @@ void AWSUtils::S3Thread::run()
       break;
     case OperationType::upload:
       uploadOperation();
-      break;
-    case OperationType::create:
-      createOperation();
       break;
     case OperationType::remove:
       removeOperation();
@@ -135,12 +133,6 @@ void AWSUtils::S3Thread::uploadOperation()
 }
 
 //-----------------------------------------------------------------------------
-void AWSUtils::S3Thread::createOperation()
-{
-  // TODO
-}
-
-//-----------------------------------------------------------------------------
 void AWSUtils::S3Thread::removeOperation()
 {
   // TODO
@@ -149,6 +141,8 @@ void AWSUtils::S3Thread::removeOperation()
 //-----------------------------------------------------------------------------
 void AWSUtils::S3Thread::abort()
 {
+  m_abort = true;
+
   // TODO: how to stop?
 }
 
@@ -169,9 +163,6 @@ QString AWSUtils::operationTypeToText(const OperationType& type)
 {
   switch(type)
   {
-    case OperationType::create:
-      return "Create";
-      break;
     case OperationType::download:
       return "Download";
       break;

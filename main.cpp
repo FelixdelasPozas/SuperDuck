@@ -228,7 +228,10 @@ int main(int argc, char **argv)
     app.processEvents();
 
     QDir().mkdir(dataPath);
+  }
 
+  if(!QDir(dataPath).exists(Utils::DATABASE_NAME))
+  {
     QFile::copy(Utils::DATABASE_NAME, Utils::databaseFile());
   }
 

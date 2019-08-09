@@ -20,6 +20,7 @@
 // Project
 #include <Model/ItemsTree.h>
 #include <Dialogs/SplashScreen.h>
+#include <Utils/AWSUtils.h>
 
 // Qt
 #include <QDir>
@@ -33,8 +34,6 @@
 #include <algorithm>
 #include <iterator>
 
-const QString DELIMITER = "/";
-
 //-----------------------------------------------------------------------------
 ItemFactory::ItemFactory()
 : m_counter{0}
@@ -46,6 +45,7 @@ ItemFactory::ItemFactory()
 Item* ItemFactory::createItem(const QString& name, Item* parent, const unsigned long long size, const Type type)
 {
   const auto item = new Item(name, parent, size, type, m_counter++);
+  if(parent) parent->addChild(item);
 
   connect(item, SIGNAL(destroyed(QObject *)), this, SLOT(onItemDestroyed(QObject *)));
 
@@ -99,6 +99,15 @@ Item::Item(const QString& name, Item* parent, const unsigned long long size, con
 }
 
 //-----------------------------------------------------------------------------
+Item::~Item()
+{
+  if(isDirectory(this))
+  {
+    std::for_each(m_childs.begin(), m_childs.end(), [](Item *i) { if(i) delete i; });
+  }
+}
+
+//-----------------------------------------------------------------------------
 QString Item::name() const
 {
   return m_name;
@@ -114,7 +123,7 @@ QString Item::fullName() const
 
   paths.removeAll(QString(""));
 
-  return paths.join(DELIMITER);
+  return paths.join(AWSUtils::DELIMITER);
 }
 
 //-----------------------------------------------------------------------------

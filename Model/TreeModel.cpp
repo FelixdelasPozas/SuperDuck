@@ -23,10 +23,13 @@
 // Qt
 #include <QApplication>
 
+// C++
+#include <cassert>
+
 //-----------------------------------------------------------------------------
-TreeModel::TreeModel(Items &items, QObject* parent)
+TreeModel::TreeModel(ItemFactory *factory, QObject* parent)
 : QAbstractItemModel(parent)
-, m_items(items)
+, m_factory{factory}
 {
 }
 
@@ -92,18 +95,16 @@ QVariant TreeModel::headerData(int section, Qt::Orientation orientation, int rol
 QModelIndex TreeModel::index(int row, int column, const QModelIndex& parent) const
 {
   auto urow = static_cast<unsigned int>(row);
-  if (!parent.isValid() && urow < m_items[0]->children().size())
-  {
-    return createIndex(row, column, m_items[0]->children().at(row));
-  }
 
-  auto parentItem = getItem(parent);
+  Item *parentItem = parent.isValid() ? getItem(parent) : m_factory->items().at(0);
 
   if (!parentItem) return QModelIndex();
 
-  if(urow < parentItem->children().size())
+  auto children = parentItem->children();
+
+  if(urow < children.size())
   {
-    return createIndex(row, column, parentItem->children().at(row));
+    return createIndex(row, column, children.at(row));
   }
 
   return QModelIndex();
@@ -132,7 +133,7 @@ QModelIndex TreeModel::parent(const QModelIndex& index) const
 //-----------------------------------------------------------------------------
 int TreeModel::rowCount(const QModelIndex& parent) const
 {
-  if(!parent.isValid()) return m_items[0]->children().size();
+  if(!parent.isValid()) return m_factory->items().at(0)->children().size();
 
   auto item = getItem(parent);
 
@@ -170,6 +171,34 @@ Item* TreeModel::getItem(const QModelIndex& index) const
 }
 
 //-----------------------------------------------------------------------------
+void TreeModel::createSubdirectory(Item* parent, const QString &name)
+{
+  QModelIndex idx;
+  if(parent != m_factory->items().at(0))
+  {
+    auto grandParent = parent->parent();
+    auto parentChilds = grandParent->children();
+    const auto parentRow = std::distance(parentChilds.cbegin(), std::find(parentChilds.cbegin(), parentChilds.cend(), parent));
+
+    idx = createIndex(parentRow, 0, parent);
+  }
+
+  auto children = parent->children();
+  const auto childrenSize = children.size();
+  int row = 0;
+  std::for_each(children.cbegin(), children.cend(), [&row, name](const Item *i) { if(i->name() < name) ++row; });
+
+  beginInsertRows(idx, row, row);
+
+  m_factory->createItem(name, parent, 0, Type::Directory);
+
+  endInsertRows();
+
+  emit dataChanged(index(0,0, idx), index(childrenSize, 0, idx));
+  emit dataChanged(idx, idx);
+}
+
+//-----------------------------------------------------------------------------
 FilterTreeModelProxy::FilterTreeModelProxy(QObject* parent)
 : QSortFilterProxyModel(parent)
 {
@@ -201,3 +230,32 @@ void FilterTreeModelProxy::setFilterFixedString(const QString& pattern)
 
   endResetModel();
 }
+
+//-----------------------------------------------------------------------------
+void TreeModel::removeItem(Item* item)
+{
+  assert(item != m_factory->items().at(0));
+
+  auto parent = item->parent();
+  auto children = parent->children();
+  int row = std::distance(children.cbegin(), std::find(children.cbegin(), children.cend(), item));
+
+  QModelIndex idx;
+  if(parent != m_factory->items().at(0))
+  {
+    auto grandParent = parent->parent();
+    auto parentChilds = grandParent->children();
+    const auto parentRow = std::distance(parentChilds.cbegin(), std::find(parentChilds.cbegin(), parentChilds.cend(), parent));
+
+    idx = createIndex(parentRow, 0, parent);
+  }
+
+  beginRemoveRows(idx, row, row);
+
+  item->parent()->removeChild(item);
+
+  delete item;
+
+  endRemoveRows();
+}
+

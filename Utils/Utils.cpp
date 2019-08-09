@@ -19,6 +19,7 @@
 
 // Project
 #include <Utils/Utils.h>
+#include <Utils/AWSUtils.h>
 
 // Qt
 #include <QStandardPaths>
@@ -143,7 +144,7 @@ std::map<std::string, unsigned long long> Utils::processItems(const Items items)
 
   auto processSelection = [&result](const Item *i)
   {
-    QString fullName = i->fullName() + (isDirectory(i) ? DELIMITER:"");
+    QString fullName = i->fullName() + (isDirectory(i) ? AWSUtils::DELIMITER:"");
 
     result.emplace(fullName.toStdString(), i->size());
   };

@@ -156,6 +156,11 @@ class MainWindow
      */
     Items getSelectedItems() const;
 
+    /** \brief Fixes the problem of QSortFilterProxyModel not updating when adding or removing rows.
+     *
+     */
+    void fixTreeView();
+
     /** \brief Returns a list of pairs name-size of selected items and it's contents.
      * \param[in] useFullNames True to generate the list using the full names, and false otherwise.
      *
@@ -163,7 +168,7 @@ class MainWindow
     std::vector<std::pair<std::string, unsigned long long> > getSelectedFileList(bool useFullNames = true) const;
 
     ItemFactory               *m_factory;       /** item factory pointer.                           */
-    FilterTreeModelProxy      *m_filter;        /** tree model filter.                              */
+    TreeModel                 *m_model;         /** tree model for the items.                       */
     Utils::Configuration      &m_configuration; /** application configuration.                      */
     QLabel                    *m_statusLabel;   /** status bar label.                               */
     QList<AWSUtils::S3Thread*> m_threads;        /** list of threads executing or pending execution. */

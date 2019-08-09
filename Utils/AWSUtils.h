@@ -44,13 +44,15 @@ namespace AWSUtils
    */
   QString toQString(const Aws::String &text);
 
-  enum class OperationType: char { download = 0, upload, create, remove };
+  enum class OperationType: char { download = 0, upload, remove };
 
   /** \brief Returns the text of the given operation.
    * \param[in] type Operation type.
    *
    */
   QString operationTypeToText(const OperationType &type);
+
+  static const QString DELIMITER =  "/";
 
   /** \struct Operation
    * \brief Defines an operation over a bucket.
@@ -108,6 +110,11 @@ namespace AWSUtils
        */
       void abort();
 
+      /** \brief Returns true if the task has been aborted during execution and false otherwise.
+       *
+       */
+      bool isAborted() const;
+
     signals:
       void progress(int);
       void globalProgress(int);
@@ -124,18 +131,14 @@ namespace AWSUtils
        */
       void uploadOperation();
 
-      /** \brief Creates objects.
-       *
-       */
-      void createOperation();
-
       /** \brief Removes objects.
        *
        */
       void removeOperation();
 
-      const Operation m_operation; /** operation structure.                   */
-      QStringList     m_errors;    /** list of errors or empty if successful. */
+      const Operation m_operation; /** operation structure.                                 */
+      QStringList     m_errors;    /** list of errors or empty if successful.               */
+      bool            m_abort;     /** true if the task needs to abort or has been aborted. */
   };
 };
 

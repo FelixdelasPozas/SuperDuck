@@ -38,11 +38,11 @@ class TreeModel
     Q_OBJECT
   public:
     /** \brief TreeModel class constructor.
-     * \param[in] items List of created items.
+     * \param[in] factory ItemFactory object pointer.
      * \param[in] parent Raw pointer of the object parent of this one.
      *
      */
-    explicit TreeModel(Items &items, QObject *parent = nullptr);
+    explicit TreeModel(ItemFactory *factory, QObject *parent = nullptr);
 
     /** \brief TreeModel class virtual destructor.
      *
@@ -57,6 +57,8 @@ class TreeModel
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
     Qt::ItemFlags flags(const QModelIndex &index) const override;
+    virtual bool insertRows(int row, int count, const QModelIndex &parent = QModelIndex())
+    { emit layoutChanged(); return true; }
 
     /** \brief Returns the item associated with the given QModelIndex.
      * \param[in] index QModelIndex struct.
@@ -64,9 +66,21 @@ class TreeModel
      */
     Item *getItem(const QModelIndex &index) const;
 
+    /** \brief Creates a subdirectory with the given name under the given parent.
+     * \param[in] parent Parent node.
+     * \param[in] directoryName Directory name.
+     *
+     */
+    void createSubdirectory(Item *parent, const QString &directoryName);
+
+    /** \brief Removes the item from the model.
+     *
+     */
+    void removeItem(Item *item);
+
   private:
-    Items            &m_items;        /** reference to items list. */
-    QFileIconProvider m_iconProvider; /** icons provider.          */
+    ItemFactory      *m_factory;      /** Item factory object. */
+    QFileIconProvider m_iconProvider; /** icons provider.      */
 };
 
 /** \class FilterTreeModelProxy
