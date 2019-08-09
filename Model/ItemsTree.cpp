@@ -95,6 +95,8 @@ Item::Item(const QString& name, Item* parent, const unsigned long long size, con
 , m_size    {size}
 , m_type    {type}
 , m_id      {id}
+, m_visible {true}
+, m_rowCount{0}
 {
 }
 
@@ -208,6 +210,13 @@ void Item::serializeState(std::ofstream& stream) const
   stream << " " << (m_type == Type::Directory ? "d" : "f"); // type
   stream << " \"" << m_name.toStdString() << "\" ";         // name
   stream << std::to_string(size()) << std::endl;            // size
+}
+
+//-----------------------------------------------------------------------------
+void Item::setVisible(const bool value)
+{
+  m_visible = value;
+  if(value && parent()) parent()->setVisible(value);
 }
 
 //-----------------------------------------------------------------------------
@@ -355,7 +364,11 @@ void ItemFactory::deserializeItems(std::ifstream& stream, SplashScreen *splash, 
 
   auto sortChildren = [](Item *i)
   {
-    if(i->type() == Type::Directory) std::sort(begin(i->m_childs), end(i->m_childs), lessThan);
+    if(isDirectory(i))
+    {
+      i->m_rowCount = i->m_childs.size();
+      std::sort(begin(i->m_childs), end(i->m_childs), lessThan);
+    }
   };
   std::for_each(begin(m_items), end(m_items), sortChildren);
 
@@ -395,4 +408,12 @@ unsigned long long Item::directoriesNumber() const
 bool isDirectory(const Item* item)
 {
   return item->type() == Type::Directory;
+}
+
+//-----------------------------------------------------------------------------
+unsigned int Item::rowCount() const
+{
+  if(!isDirectory(this)) return 0;
+
+  return std::count_if(m_childs.cbegin(), m_childs.cend(), [](const Item *i) { if(i) return i->isVisible(); return false; });
 }

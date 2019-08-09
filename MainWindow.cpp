@@ -108,6 +108,7 @@ void MainWindow::connectSignals()
 {
   connect(actionSettings, SIGNAL(triggered(bool)), this, SLOT(onSettingsButtonTriggered()));
   connect(m_searchLine, SIGNAL(textChanged(const QString &)), this, SLOT(onSearchTextChanged(const QString &)));
+  connect(m_searchLine, SIGNAL(returnPressed()), this, SLOT(onSearchButtonClicked()));
   connect(m_searchButton, SIGNAL(clicked(bool)), this, SLOT(onSearchButtonClicked()));
 }
 
@@ -257,6 +258,23 @@ void MainWindow::onUploadActionTriggered()
 //-----------------------------------------------------------------------------
 void MainWindow::onDeleteActionTriggered()
 {
+  auto items = getSelectedItems();
+  Item *parent;
+  auto checkParent = [&parent](const Item *i)
+  {
+    if(!parent) parent = i->parent();
+    if(i->parent() != parent) return true;
+
+    return false;
+  };
+  auto it = std::find_if(items.cbegin(), items.cend(), checkParent);
+
+  if(it != items.cend())
+  {
+    QMessageBox::information(this, tr("Delete objects."), tr("Selection musn't have multiple parents."));
+    return;
+  }
+
   auto selected = getSelectedFileList();
 
   if(selected.empty())
@@ -265,15 +283,13 @@ void MainWindow::onDeleteActionTriggered()
     return;
   }
 
-  auto items = getSelectedItems();
   if(items.size() == 1)
   {
-    const auto item = items.front();
+    auto item = items.at(0);
     if(isDirectory(item) && item->children().size() == 0)
     {
       m_model->removeItem(item);
-
-      fixTreeView();
+      return;
     }
   }
 
@@ -318,8 +334,6 @@ void MainWindow::onCreateActionTriggered()
 
   auto parent = (items.empty() ? m_factory->items().at(0) : items.front());
   m_model->createSubdirectory(parent, directory);
-
-  fixTreeView();
 }
 
 //-----------------------------------------------------------------------------
@@ -333,15 +347,11 @@ void MainWindow::onSearchTextChanged(const QString& text)
 //-----------------------------------------------------------------------------
 void MainWindow::onSearchButtonClicked()
 {
-  auto filter = qobject_cast<FilterTreeModelProxy *>(m_treeView->model());
-  if(filter)
-  {
-    QApplication::setOverrideCursor(Qt::WaitCursor);
+  QApplication::setOverrideCursor(Qt::WaitCursor);
 
-    filter->setFilterFixedString(m_searchLine->text());
+  m_model->setFilter(m_searchLine->text());
 
-    QApplication::restoreOverrideCursor();
-  }
+  QApplication::restoreOverrideCursor();
 }
 
 //-----------------------------------------------------------------------------
@@ -411,12 +421,10 @@ void MainWindow::onOperationFinished()
       {
         case AWSUtils::OperationType::remove:
           // TODO
-          fixTreeView();
           updateStatusLabel();
           break;
         case AWSUtils::OperationType::upload:
           // TODO
-          fixTreeView();
           updateStatusLabel();
           break;
         case AWSUtils::OperationType::download:
@@ -465,14 +473,7 @@ void MainWindow::configureTreeView()
   m_model = new TreeModel(m_factory);
   connect(m_model, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &, const QVector<int> &)), this, SLOT(refreshView()));
 
-  auto filter = new FilterTreeModelProxy();
-  filter->setSourceModel(m_model);
-  filter->setFilterCaseSensitivity(Qt::CaseInsensitive);
-  filter->setFilterKeyColumn(0);
-  filter->setDynamicSortFilter(true);
-  filter->setFilterRole(Qt::DisplayRole);
-
-  m_treeView->setModel(filter);
+  m_treeView->setModel(m_model);
   m_treeView->setAlternatingRowColors(true);
   m_treeView->setAnimated(true);
   m_treeView->setExpandsOnDoubleClick(true);
@@ -518,6 +519,8 @@ void MainWindow::onContextMenuRequested(const QPoint &pos)
   }
   else
   {
+    deleteAction.setEnabled(!m_configuration.DisableDelete);
+
     if(items.size() == 1)
     {
       auto item = items.at(0);
@@ -530,7 +533,7 @@ void MainWindow::onContextMenuRequested(const QPoint &pos)
         createAction.setText(tr("Create subdirectory in '%1'").arg(itemName));
         deleteAction.setText(tr("Delete '%1' and its contents").arg(itemName));
 
-        downloadAction.setEnabled(item->children().size() > 0);
+        downloadAction.setEnabled(item->rowCount() > 0);
       }
       else
       {
@@ -542,11 +545,21 @@ void MainWindow::onContextMenuRequested(const QPoint &pos)
     }
     else
     {
+      Item *parent;
+      auto checkParent = [&parent](const Item *i)
+      {
+        if(!parent) parent = i->parent();
+        if(i->parent() != parent) return true;
+
+        return false;
+      };
+      auto it = std::find_if(items.cbegin(), items.cend(), checkParent);
+      bool multipleParents = (it != items.cend());
+
+      deleteAction.setEnabled(!m_configuration.DisableDelete && !multipleParents);
       uploadAction.setEnabled(false);
       createAction.setEnabled(false);
     }
-
-    deleteAction.setEnabled(!m_configuration.DisableDelete);
   }
 
   contextMenu.exec(QCursor::pos());
@@ -556,25 +569,15 @@ void MainWindow::onContextMenuRequested(const QPoint &pos)
 Items MainWindow::getSelectedItems() const
 {
   Items items;
-  QModelIndexList validIndexes, validFilterIndexes;
+  QModelIndexList validIndexes;
 
-  auto selectedFilterIndexes = m_treeView->selectionModel()->selectedIndexes();
-  std::for_each(selectedFilterIndexes.cbegin(), selectedFilterIndexes.cend(), [&validFilterIndexes](const QModelIndex &i) { if(i.isValid() && i.column() == 0) validFilterIndexes << i; });
+  auto selectedIndexes = m_treeView->selectionModel()->selectedIndexes();
+  std::for_each(selectedIndexes.cbegin(), selectedIndexes.cend(), [&validIndexes](const QModelIndex &i) { if(i.isValid() && i.column() == 0) validIndexes << i; });
 
-  if(!validFilterIndexes.isEmpty())
+  if(!validIndexes.isEmpty())
   {
-    auto filterModel = qobject_cast<FilterTreeModelProxy *>(m_treeView->model());
-    if(filterModel)
-    {
-      auto mapIndexesToSource = [&filterModel, &validIndexes](const QModelIndex &i) { auto si = filterModel->mapToSource(i); if(si.isValid()) validIndexes << si; };
-      std::for_each(validFilterIndexes.cbegin(), validFilterIndexes.cend(), mapIndexesToSource);
-
-      if(!validIndexes.isEmpty())
-      {
-        auto indexesToItems = [&items](const QModelIndex &i){ auto item = static_cast<Item *>(i.internalPointer()); if(item) items.push_back(item); };
-        std::for_each(validIndexes.cbegin(), validIndexes.cend(), indexesToItems);
-      }
-    }
+    auto indexesToItems = [&items](const QModelIndex &i){ auto item = static_cast<Item *>(i.internalPointer()); if(item) items.push_back(item); };
+    std::for_each(validIndexes.cbegin(), validIndexes.cend(), indexesToItems);
   }
 
   return items;
@@ -605,16 +608,3 @@ std::vector<std::pair<std::string, unsigned long long>> MainWindow::getSelectedF
   return selected;
 }
 
-//-----------------------------------------------------------------------------
-void MainWindow::fixTreeView()
-{
-  // NOTE: this code is necessary because QSortFilterProxyModel doesn't update rows.
-  auto indexes = m_treeView->selectionModel()->selectedRows();
-  if(!indexes.isEmpty())
-  {
-    auto index = indexes.front();
-    const auto value = m_treeView->isExpanded(index);
-    m_treeView->setExpanded(index, !value);
-    m_treeView->setExpanded(index, value);
-  }
-}

@@ -156,11 +156,6 @@ class MainWindow
      */
     Items getSelectedItems() const;
 
-    /** \brief Fixes the problem of QSortFilterProxyModel not updating when adding or removing rows.
-     *
-     */
-    void fixTreeView();
-
     /** \brief Returns a list of pairs name-size of selected items and it's contents.
      * \param[in] useFullNames True to generate the list using the full names, and false otherwise.
      *

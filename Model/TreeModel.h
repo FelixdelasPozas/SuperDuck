@@ -78,37 +78,25 @@ class TreeModel
      */
     void removeItem(Item *item);
 
+    /** \brief Removes the items from the model one by one.
+     *
+     */
+    void removeItems(Items items);
+
+    /** \brief Set the text to filter by name.
+     * \param[in] text Text string.
+     */
+    void setFilter(const QString &text);
+
   private:
+    /** \brief Counts and returns the visible child and the given row.
+     *
+     */
+    Item *findVisibleItem(Item *parent, int row) const;
+
     ItemFactory      *m_factory;      /** Item factory object. */
     QFileIconProvider m_iconProvider; /** icons provider.      */
-};
-
-/** \class FilterTreeModelProxy
- * \brief Implements a proxy filter for the tree model.
- *
- */
-class FilterTreeModelProxy
-: public QSortFilterProxyModel
-{
-    Q_OBJECT
-  public:
-    /** \brief FilterTreeModelProxy class constructor.
-     * \param[in] parent Raw pointer of the object parent of this one.
-     *
-     */
-    explicit FilterTreeModelProxy(QObject *parent = nullptr);
-
-    /** \brief FilterTreeModelProxy class virtual destructor.
-     *
-     */
-    virtual ~FilterTreeModelProxy()
-    {};
-
-  public slots:
-    void setFilterFixedString(const QString &pattern);
-
-  protected:
-    virtual bool filterAcceptsRow(int source_row, const QModelIndex &source_parent) const override;
+    QString           m_filter;       /** text to filter by.   */
 };
 
 #endif // TREEMODEL_H_

@@ -175,6 +175,23 @@ class Item
      */
     unsigned long long directoriesNumber() const;
 
+    /** \brief Returns true if the item is visible and false otherwise.
+     *
+     */
+    bool isVisible() const
+    { return m_visible; }
+
+    /** \brief Sets the item visibility.
+     * \param[in] value True to set the item visible, false otherwise.
+     *
+     */
+    void setVisible(const bool value);
+
+    /** \brief Returns the count of visible children.
+     *
+     */
+    unsigned int rowCount() const;
+
   private:
     /** \brief Item class constructor.
      * \param[in] name Item name.
@@ -200,12 +217,14 @@ class Item
 
     friend class ItemFactory;
 
-    QString             m_name;     /** item name.                         */
-    Item               *m_parent;   /** pointer to item parent.            */
-    unsigned long long  m_size;     /** item size.                         */
-    Type                m_type;     /** item type.                         */
-    std::vector<Item *> m_childs;   /** list of children items.            */
-    unsigned long long  m_id;       /** item id.                           */
+    QString             m_name;     /** item name.                               */
+    Item               *m_parent;   /** pointer to item parent.                  */
+    unsigned long long  m_size;     /** item size.                               */
+    Type                m_type;     /** item type.                               */
+    std::vector<Item *> m_childs;   /** list of children items.                  */
+    unsigned long long  m_id;       /** item id.                                 */
+    bool                m_visible;  /** true if visible, false otherwise.        */
+    unsigned int        m_rowCount; /** counts the visible children of the item. */
 };
 
 /** \brief Less than method for sorting. Returns true if lhs < rhs.

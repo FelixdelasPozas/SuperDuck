@@ -102,9 +102,20 @@ QModelIndex TreeModel::index(int row, int column, const QModelIndex& parent) con
 
   auto children = parentItem->children();
 
-  if(urow < children.size())
+  if(urow < parentItem->rowCount())
   {
-    return createIndex(row, column, children.at(row));
+    if(m_filter.isEmpty())
+    {
+      return createIndex(row, column, children.at(row));
+    }
+    else
+    {
+      auto child = findVisibleItem(parentItem, row);
+      if(child)
+      {
+        return createIndex(row, column, child);
+      }
+    }
   }
 
   return QModelIndex();
@@ -123,21 +134,32 @@ QModelIndex TreeModel::parent(const QModelIndex& index) const
   if(parentItem->id() == 0) return QModelIndex();
 
   auto children = parentItem->children();
-  auto it = std::find(children.cbegin(), children.cend(), childItem);
+  int count = 0;
+  auto findChild = [&count, &childItem](const Item *i)
+  {
+    if(i)
+    {
+      if(i == childItem) return true;
+      ++count;
+    }
+
+    return false;
+  };
+  auto it = std::find_if(children.cbegin(), children.cend(), findChild);
 
   if(it == children.cend()) return QModelIndex();
 
-  return createIndex(std::distance(children.cbegin(), it), 0, parentItem);
+  return createIndex(count, 0, parentItem);
 }
 
 //-----------------------------------------------------------------------------
 int TreeModel::rowCount(const QModelIndex& parent) const
 {
-  if(!parent.isValid()) return m_factory->items().at(0)->children().size();
+  if(!parent.isValid()) return m_factory->items().at(0)->rowCount();
 
   auto item = getItem(parent);
 
-  return item ? item->children().size() : 0;
+  return item->rowCount();
 }
 
 //-----------------------------------------------------------------------------
@@ -184,9 +206,9 @@ void TreeModel::createSubdirectory(Item* parent, const QString &name)
   }
 
   auto children = parent->children();
-  const auto childrenSize = children.size();
+  const auto childrenSize = parent->rowCount();
   int row = 0;
-  std::for_each(children.cbegin(), children.cend(), [&row, name](const Item *i) { if(i->name() < name) ++row; });
+  std::for_each(children.cbegin(), children.cend(), [&row, name](const Item *i) { if(i->isVisible() && i->name() < name) ++row; });
 
   beginInsertRows(idx, row, row);
 
@@ -196,39 +218,6 @@ void TreeModel::createSubdirectory(Item* parent, const QString &name)
 
   emit dataChanged(index(0,0, idx), index(childrenSize, 0, idx));
   emit dataChanged(idx, idx);
-}
-
-//-----------------------------------------------------------------------------
-FilterTreeModelProxy::FilterTreeModelProxy(QObject* parent)
-: QSortFilterProxyModel(parent)
-{
-}
-
-//-----------------------------------------------------------------------------
-bool FilterTreeModelProxy::filterAcceptsRow(int source_row, const QModelIndex& source_parent) const
-{
-  if (QSortFilterProxyModel::filterAcceptsRow(source_row, source_parent))
-      return true;
-
-  const QModelIndex index = sourceModel()->index(source_row, 0, source_parent);
-  const int count = sourceModel()->rowCount(index);
-
-  for (int i = 0; i < count; ++i)
-  {
-    if (filterAcceptsRow(i, index)) return true;
-  }
-
-  return false;
-}
-
-//-----------------------------------------------------------------------------
-void FilterTreeModelProxy::setFilterFixedString(const QString& pattern)
-{
-  beginResetModel();
-
-  QSortFilterProxyModel::setFilterFixedString(pattern);
-
-  endResetModel();
 }
 
 //-----------------------------------------------------------------------------
@@ -259,3 +248,58 @@ void TreeModel::removeItem(Item* item)
   endRemoveRows();
 }
 
+//-----------------------------------------------------------------------------
+void TreeModel::removeItems(Items items)
+{
+  std::for_each(items.begin(), items.end(), [this](Item *i) { removeItem(i); });
+}
+
+//-----------------------------------------------------------------------------
+void TreeModel::setFilter(const QString& text)
+{
+  if(m_filter != text)
+  {
+    m_filter = text;
+
+    auto items = m_factory->items();
+
+    beginResetModel();
+
+    std::for_each(items.begin(), items.end(), [](Item *i) {if(i) i->setVisible(false); });
+
+    std::for_each(items.begin(), items.end(), [text](Item *i) { if(i) i->setVisible(text.isEmpty() || i->name().contains(text, Qt::CaseInsensitive)); });
+
+    endResetModel();
+  }
+}
+
+//-----------------------------------------------------------------------------
+Item* TreeModel::findVisibleItem(Item *parent, int row) const
+{
+  unsigned int urow = row;
+  if(parent && urow < parent->rowCount())
+  {
+    unsigned int count = 0;
+    unsigned int childrenRow = 0;
+
+    auto countRows = [&count, &childrenRow, urow](const Item *i)
+    {
+      if(i)
+      {
+        if(i->isVisible())
+        {
+          if(count == urow) return true;
+          ++count;
+        }
+        ++childrenRow;
+      }
+
+      return false;
+    };
+    auto children = parent->children();
+    auto it = std::find_if(children.cbegin(), children.cend(), countRows);
+    if(it != children.cend()) return *it;
+  }
+
+  return nullptr;
+}
