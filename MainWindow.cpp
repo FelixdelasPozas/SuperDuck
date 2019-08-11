@@ -22,6 +22,7 @@
 #include <Utils/ListExportUtils.h>
 #include <Dialogs/SettingsDialog.h>
 #include <Dialogs/ProgressDialog.h>
+#include <Dialogs/AboutDialog.h>
 
 // C++
 #include <fstream>
@@ -102,6 +103,7 @@ void MainWindow::saveConfiguration()
 void MainWindow::connectSignals()
 {
   connect(actionSettings, SIGNAL(triggered(bool)), this, SLOT(onSettingsButtonTriggered()));
+  connect(actionAbout, SIGNAL(triggered(bool)), this, SLOT(onAboutButtonTriggered()));
   connect(m_searchLine, SIGNAL(textChanged(const QString &)), this, SLOT(onSearchTextChanged(const QString &)));
   connect(m_searchLine, SIGNAL(returnPressed()), this, SLOT(onSearchButtonClicked()));
   connect(m_searchButton, SIGNAL(clicked(bool)), this, SLOT(onSearchButtonClicked()));
@@ -703,4 +705,11 @@ void MainWindow::restoreExpandedIndexes()
   std::for_each(m_expanded.cbegin(), m_expanded.cend(), expandIndex);
 
   m_expanded = newList;
+}
+
+//-----------------------------------------------------------------------------
+void MainWindow::onAboutButtonTriggered()
+{
+  AboutDialog dialog(this);
+  dialog.exec();
 }

@@ -132,6 +132,11 @@ class MainWindow
      */
     void onIndexCollapsed(const QModelIndex &index);
 
+    /** \brief Shows the about dialog.
+     *
+     */
+    void onAboutButtonTriggered();
+
   private:
     /** \brief Helper method to restore application position and size.
      *

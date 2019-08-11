@@ -68,8 +68,6 @@ class SplashScreen
     int           m_progress; /** progress bar value.  */
     QApplication *m_app;      /** application pointer. */
     QString       m_message;  /** current message.     */
-    int           m_frame;    /** current frame.       */
-
 };
 
 #endif // SPLASHSCREEN_H_

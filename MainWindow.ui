@@ -100,6 +100,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionSettings"/>
+   <addaction name="actionAbout"/>
    <addaction name="separator"/>
    <addaction name="actionExit_application"/>
   </widget>
@@ -143,6 +144,18 @@
    </property>
    <property name="menuRole">
     <enum>QAction::PreferencesRole</enum>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="icon">
+    <iconset resource="resources/resources.qrc">
+     <normaloff>:/Pato/question.svg</normaloff>:/Pato/question.svg</iconset>
+   </property>
+   <property name="text">
+    <string>About...</string>
+   </property>
+   <property name="toolTip">
+    <string>About this software...</string>
    </property>
   </action>
  </widget>

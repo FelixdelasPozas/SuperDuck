@@ -26,10 +26,9 @@
 
 //-----------------------------------------------------------------------------
 SplashScreen::SplashScreen(QApplication* app, QWidget* parent)
-: QSplashScreen(QPixmap(":/Pato/splash_frame_00.png"), Qt::WindowStaysOnTopHint)
+: QSplashScreen(QPixmap(":/Pato/splash.png"), Qt::WindowStaysOnTopHint)
 , m_progress{0}
 , m_app{app}
-, m_frame{1}
 {
   installEventFilter(this);
 }
@@ -41,12 +40,7 @@ void SplashScreen::setProgress(int value)
   {
     m_progress = std::max(0, std::min(100, value));
 
-    auto numberString = QString::number(m_frame % 16);
-    numberString = (m_frame % 16 < 10) ? "0" + numberString : numberString;
-    auto image = tr(":/Pato/splash_frame_%1.png").arg(numberString);
-
-    setPixmap(QPixmap(image));
-    m_frame = (m_frame + 1) % 16;
+    repaint();
   }
 }
 

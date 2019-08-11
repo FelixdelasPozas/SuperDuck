@@ -70,6 +70,7 @@ set (SOURCES
 	Dialogs/SplashScreen.cpp
 	Dialogs/SettingsDialog.cpp
 	Dialogs/ProgressDialog.cpp
+	Dialogs/AboutDialog.cpp
 	Model/ItemsTree.cpp
 	Model/TreeModel.cpp
 	MainWindow.cpp
