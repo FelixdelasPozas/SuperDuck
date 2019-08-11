@@ -26,11 +26,12 @@
 
 //-----------------------------------------------------------------------------
 SplashScreen::SplashScreen(QApplication* app, QWidget* parent)
-: QSplashScreen(QPixmap(":/Pato/splash_frame_00.png"))
+: QSplashScreen(QPixmap(":/Pato/splash_frame_00.png"), Qt::WindowStaysOnTopHint)
 , m_progress{0}
 , m_app{app}
 , m_frame{1}
 {
+  installEventFilter(this);
 }
 
 //-----------------------------------------------------------------------------
@@ -47,6 +48,21 @@ void SplashScreen::setProgress(int value)
     setPixmap(QPixmap(image));
     m_frame = (m_frame + 1) % 16;
   }
+}
+
+//-----------------------------------------------------------------------------
+bool SplashScreen::eventFilter(QObject* target, QEvent* event)
+{
+  if((event->type() == QEvent::MouseButtonPress) ||
+     (event->type() == QEvent::MouseButtonDblClick) ||
+     (event->type() == QEvent::MouseButtonRelease) ||
+     (event->type() == QEvent::KeyPress) ||
+     (event->type() == QEvent::KeyRelease))
+  {
+    return true;
+  }
+
+  return false;
 }
 
 //-----------------------------------------------------------------------------

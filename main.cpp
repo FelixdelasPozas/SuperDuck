@@ -227,12 +227,34 @@ int main(int argc, char **argv)
     splash.setMessage(QString("Creating data directory"));
     app.processEvents();
 
-    QDir().mkdir(dataPath);
+    if(!QDir().mkdir(dataPath))
+    {
+      QMessageBox msgbox;
+      msgbox.setWindowIcon(QIcon(":/Pato/rubber-duck.ico"));
+      msgbox.setWindowTitle(QObject::tr("Super Pato"));
+      msgbox.setIcon(QMessageBox::Information);
+      msgbox.setText(QObject::tr("Unable to create application data path!"));
+      msgbox.setStandardButtons(QMessageBox::Ok);
+      msgbox.exec();
+
+      return 0;
+    }
   }
 
   if(!QDir(dataPath).exists(Utils::DATABASE_NAME))
   {
-    QFile::copy(Utils::DATABASE_NAME, Utils::databaseFile());
+    if(!QFile::copy(Utils::DATABASE_NAME, Utils::databaseFile()))
+    {
+      QMessageBox msgbox;
+      msgbox.setWindowIcon(QIcon(":/Pato/rubber-duck.ico"));
+      msgbox.setWindowTitle(QObject::tr("Super Pato"));
+      msgbox.setIcon(QMessageBox::Information);
+      msgbox.setText(QObject::tr("Unable to copy database to data path!"));
+      msgbox.setStandardButtons(QMessageBox::Ok);
+      msgbox.exec();
+
+      return 0;
+    }
   }
 
   if(configuration.Database_file.isEmpty())
@@ -247,7 +269,7 @@ int main(int argc, char **argv)
 
   if(istream.is_open())
   {
-    splash.setMessage(QString("Reading database"));
+    splash.setMessage(QString("Loading database"));
     app.processEvents();
 
     factory.deserializeItems(istream, &splash, &app);
@@ -277,10 +299,15 @@ int main(int argc, char **argv)
 
   if(factory.hasBeenModified())
   {
-    std::ofstream ostream;
-    ostream.open(configuration.Database_file.toStdString(), std::ios_base::in);
+    splash.setProgress(0);
+    splash.show();
 
-    factory.serializeItems(ostream);
+    std::ofstream ostream;
+    ostream.open(configuration.Database_file.toStdString(), std::ios_base::out|std::ios_base::trunc);
+
+    factory.serializeItems(ostream, &splash, &app);
+
+    splash.hide();
   }
 
   return result;

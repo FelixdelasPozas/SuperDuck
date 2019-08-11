@@ -52,6 +52,8 @@ class SplashScreen
      */
     virtual void setMessage(const QString &message);
 
+    bool eventFilter(QObject *target, QEvent *event);
+
   public slots:
     /** \brief Updates the progress bar with the given progress value.
      * \param[in] value Progress value in [0, 100].

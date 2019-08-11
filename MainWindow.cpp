@@ -67,13 +67,6 @@ MainWindow::MainWindow(Utils::Configuration &configuration, ItemFactory* factory
 MainWindow::~MainWindow()
 {
   saveConfiguration();
-
-  if(m_factory->hasBeenModified())
-  {
-    std::ofstream outFile("dbData2.txt");
-    m_factory->serializeItems(outFile);
-    outFile.close();
-  }
 }
 
 //-----------------------------------------------------------------------------
@@ -101,6 +94,8 @@ void MainWindow::saveConfiguration()
 
   settings.setValue(STATE, saveState());
   settings.setValue(GEOMETRY, saveGeometry());
+
+  settings.sync();
 }
 
 //-----------------------------------------------------------------------------
@@ -269,17 +264,11 @@ void MainWindow::onDeleteActionTriggered()
   };
   auto it = std::find_if(items.cbegin(), items.cend(), checkParent);
 
+  const auto title = tr("Delete objects");
+
   if(it != items.cend())
   {
-    QMessageBox::information(this, tr("Delete objects."), tr("Selection musn't have multiple parents."));
-    return;
-  }
-
-  auto selected = getSelectedFileList();
-
-  if(selected.empty())
-  {
-    QMessageBox::information(this, tr("Delete objects"), tr("No objects selected!"));
+    QMessageBox::information(this, title, tr("Selection musn't have multiple parents."));
     return;
   }
 
@@ -288,27 +277,78 @@ void MainWindow::onDeleteActionTriggered()
     auto item = items.at(0);
     if(isDirectory(item) && item->children().size() == 0)
     {
-      m_model->removeItem(item);
+      QMessageBox msgBox(this);
+      msgBox.setWindowTitle(title);
+      msgBox.setWindowIcon(QIcon(":/Pato/rubber-duck.svg"));
+      msgBox.setStandardButtons(QMessageBox::Cancel|QMessageBox::Ok);
+      msgBox.setText(tr("Do you really want to delete the directory '%1'?").arg(item->name()));
+      msgBox.setIcon(QMessageBox::Icon::Question);
+
+      if(msgBox.exec() == QMessageBox::Ok)
+      {
+        m_model->removeItem(item);
+
+        updateStatusLabel();
+      }
       return;
     }
   }
 
-  AWSUtils::Operation op;
-  op.bucket = AWSUtils::toAwsString(m_configuration.AWS_Bucket);
-  op.region = AWSUtils::toAwsString(m_configuration.AWS_Region);
-  op.type   = AWSUtils::OperationType::remove;
-  op.credentials = Aws::Auth::AWSCredentials(AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Access_key_id)),
-                                             AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Secret_access_key)));
-  op.keys = std::move(selected);
-  op.useLogging = true;
+  auto selected = getSelectedFileList();
 
-  auto thread = new AWSUtils::S3Thread(op);
-  m_threads << thread;
+  if(selected.empty())
+  {
+    QMessageBox::information(this, title, tr("No objects selected!"));
+    return;
+  }
 
-  connect(thread, SIGNAL(finished()), this, SLOT(onOperationFinished()));
+  int dirNum = 0, fileNum = 0;
+  std::for_each(items.cbegin(), items.cend(), [&dirNum, &fileNum](const Item *i){ if(i) { dirNum += i->directoriesNumber(); fileNum += i->filesNumber(); }});
 
-  ProgressDialog dialog(thread, this);
-  dialog.exec();
+  QString message = tr("Do you really want to delete ");
+  if(fileNum > 0)
+  {
+    message += tr("%1 file%2%3").arg(fileNum).arg(fileNum > 1 ? "s":"").arg(dirNum > 0 ? " and ":"?");
+  }
+  if(dirNum > 0)
+  {
+    message += tr("%1 director%2?").arg(dirNum).arg(dirNum > 1 ? "ies":"y");
+  }
+
+  QString details = tr("Objects to be deleted from the bucket:");
+  auto addSelectedFiles = [&details](const std::pair<std::string, unsigned long long> &p)
+  {
+    details += tr("\n%1").arg(QString::fromStdString(p.first));
+  };
+  std::for_each(selected.cbegin(), selected.cend(), addSelectedFiles);
+
+  QMessageBox msgBox(this);
+  msgBox.setWindowTitle(title);
+  msgBox.setWindowIcon(QIcon(":/Pato/rubber-duck.svg"));
+  msgBox.setStandardButtons(QMessageBox::Cancel|QMessageBox::Ok);
+  msgBox.setText(message);
+  msgBox.setDetailedText(details);
+  msgBox.setIcon(QMessageBox::Icon::Question);
+
+  if(msgBox.exec() == QMessageBox::Ok)
+  {
+    AWSUtils::Operation op;
+    op.bucket = AWSUtils::toAwsString(m_configuration.AWS_Bucket);
+    op.region = AWSUtils::toAwsString(m_configuration.AWS_Region);
+    op.type   = AWSUtils::OperationType::remove;
+    op.credentials = Aws::Auth::AWSCredentials(AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Access_key_id)),
+                                               AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Secret_access_key)));
+    op.keys = std::move(selected);
+    op.useLogging = true;
+
+    auto thread = new AWSUtils::S3Thread(op);
+    m_threads << thread;
+
+    connect(thread, SIGNAL(finished()), this, SLOT(onOperationFinished()));
+
+    ProgressDialog dialog(thread, this);
+    dialog.exec();
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -316,9 +356,11 @@ void MainWindow::onCreateActionTriggered()
 {
   auto items = getSelectedItems();
 
+  const auto title = tr("Create directory");
+
   if(items.size() > 1)
   {
-    QMessageBox::information(this, tr("Create directory"), tr("Invalid selection!"));
+    QMessageBox::information(this, title, tr("Invalid selection!"));
     return;
   }
 
@@ -328,12 +370,22 @@ void MainWindow::onCreateActionTriggered()
 
   if (directory.contains(AWSUtils::DELIMITER))
   {
-    QMessageBox::information(this, tr("Create directory"), tr("The name '%1' is invalid!\nMust not contain the '/' character.").arg(directory));
+    QMessageBox::information(this, title, tr("The name '%1' is invalid!\nMust not contain the '/' character.").arg(directory));
     return;
   }
 
   auto parent = (items.empty() ? m_factory->items().at(0) : items.front());
+  auto children = parent->children();
+  auto it = std::find_if(children.cbegin(), children.cend(), [&directory](const Item *i){ if(i) return (i->name().compare(directory, Qt::CaseInsensitive) == 0); return false; });
+  if(it != children.cend())
+  {
+    QMessageBox::information(this, title, tr("The name '%1' is invalid!\nThe parent has already a directory with that name.").arg(directory));
+    return;
+  }
+
   m_model->createSubdirectory(parent, directory);
+
+  updateStatusLabel();
 }
 
 //-----------------------------------------------------------------------------
@@ -368,6 +420,8 @@ void MainWindow::onSearchButtonClicked()
   };
   std::for_each(selectedIndexes.cbegin(), selectedIndexes.cend(), selectIndex);
   if(lastIndex.isValid()) m_treeView->scrollTo(lastIndex, QAbstractItemView::ScrollHint::EnsureVisible);
+
+  updateStatusLabel();
 
   QApplication::restoreOverrideCursor();
 }
@@ -535,7 +589,7 @@ void MainWindow::onContextMenuRequested(const QPoint &pos)
 
     if(items.size() == 1)
     {
-      auto item = items.at(0);
+      const auto item = items.at(0);
       const auto itemName = item->name();
       if(isDirectory(item))
       {
@@ -545,7 +599,7 @@ void MainWindow::onContextMenuRequested(const QPoint &pos)
         createAction.setText(tr("Create subdirectory in '%1'").arg(itemName));
         deleteAction.setText(tr("Delete '%1' and its contents").arg(itemName));
 
-        downloadAction.setEnabled(item->rowCount() > 0);
+        downloadAction.setEnabled(item->childrenCount() > 0);
       }
       else
       {
@@ -557,7 +611,7 @@ void MainWindow::onContextMenuRequested(const QPoint &pos)
     }
     else
     {
-      Item *parent;
+      Item *parent = nullptr;
       auto checkParent = [&parent](const Item *i)
       {
         if(!parent) parent = i->parent();

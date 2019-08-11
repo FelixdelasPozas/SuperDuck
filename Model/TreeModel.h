@@ -47,7 +47,7 @@ class TreeModel
      *
      */
     virtual ~TreeModel()
-    {}
+    {};
 
     QVariant data(const QModelIndex &index, int role) const override;
     QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
@@ -89,18 +89,19 @@ class TreeModel
 
     /** \brief Returns the index of the given item.
      * \param[in] item Item pointer.
+     * \param[in] column Item column.
      *
      */
-    QModelIndex indexOf(Item *item) const;
+    QModelIndex indexOf(Item *item, int column = 0) const;
   private:
     /** \brief Counts and returns the visible child and the given row.
      *
      */
     Item *findVisibleItem(Item *parent, int row) const;
 
-    ItemFactory      *m_factory;      /** Item factory object.           */
-    QFileIconProvider m_iconProvider; /** icons provider.                */
-    QString           m_filter;       /** text to filter by.             */
+    ItemFactory      *m_factory;      /** Item factory object. */
+    QFileIconProvider m_iconProvider; /** icons provider.      */
+    QString           m_filter;       /** text to filter by.   */
 };
 
 #endif // TREEMODEL_H_

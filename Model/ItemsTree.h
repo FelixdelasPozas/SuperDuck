@@ -42,9 +42,7 @@ class QApplication;
  *
  */
 class ItemFactory
-: public QObject
 {
-    Q_OBJECT
   public:
     /** \brief ItemFactory class constructor.
      *
@@ -69,7 +67,7 @@ class ItemFactory
      * \param[inout] stream Output stream.
      *
      */
-    void serializeItems(std::ofstream &stream) const;
+    void serializeItems(std::ofstream &stream, SplashScreen *splash, QApplication *app) const;
 
     /** \brief Creates items from the information in the given stream.
      * \param[inout] stream Input stream.
@@ -96,13 +94,19 @@ class ItemFactory
     Items &items()
     { return m_items; }
 
-  private slots:
-    /** \brief Marks the model as modified when an item is destroyed.
+    /** \brief Deletes the given item.
+     * \param[in] item Item pointer.
      *
      */
-    void onItemDestroyed(QObject *obj);
+    void deleteItem(Item *item);
 
   private:
+    /** \brief Returns the list of items contained in the given one.
+     * \param[in] item Item object pointer.
+     *
+     */
+    Items traverseItem(Item *item);
+
     std::atomic<unsigned long long int> m_counter;  /** object counter.                                                  */
     std::vector<Item *>                 m_items;    /** list of items.                                                   */
     bool                                m_modified; /** true if items have been deleted or created from a certain point. */
@@ -113,11 +117,6 @@ class Item
 {
     Q_OBJECT
   public:
-    /** \brief Item class destructor.
-     *
-     */
-    virtual ~Item();
-
     /** \brief Returns the item name
      *
      */
@@ -190,7 +189,7 @@ class Item
     /** \brief Returns the count of visible children.
      *
      */
-    unsigned int rowCount() const;
+    unsigned int childrenCount() const;
 
   private:
     /** \brief Item class constructor.
@@ -202,6 +201,12 @@ class Item
      *
      */
     explicit Item(const QString &name, Item *parent, const unsigned long long size, const Type type, unsigned long long id);
+
+    /** \brief Item class destructor.
+     *
+     */
+    virtual ~Item()
+    {};
 
     /** \brief Serializes the object state to the given stream.
      * \param[in] stream Output file stream.
@@ -217,14 +222,13 @@ class Item
 
     friend class ItemFactory;
 
-    QString             m_name;     /** item name.                               */
-    Item               *m_parent;   /** pointer to item parent.                  */
-    unsigned long long  m_size;     /** item size.                               */
-    Type                m_type;     /** item type.                               */
-    std::vector<Item *> m_childs;   /** list of children items.                  */
-    unsigned long long  m_id;       /** item id.                                 */
-    bool                m_visible;  /** true if visible, false otherwise.        */
-    unsigned int        m_rowCount; /** counts the visible children of the item. */
+    QString             m_name;     /** item name.                        */
+    Item               *m_parent;   /** pointer to item parent.           */
+    unsigned long long  m_size;     /** item size.                        */
+    Type                m_type;     /** item type.                        */
+    std::vector<Item *> m_childs;   /** list of children items.           */
+    unsigned long long  m_id;       /** item id.                          */
+    bool                m_visible;  /** true if visible, false otherwise. */
 };
 
 /** \brief Less than method for sorting. Returns true if lhs < rhs.

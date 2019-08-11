@@ -102,7 +102,7 @@ QModelIndex TreeModel::index(int row, int column, const QModelIndex& parent) con
 
   auto children = parentItem->children();
 
-  if(urow < parentItem->rowCount())
+  if(urow < parentItem->childrenCount())
   {
     if(m_filter.isEmpty())
     {
@@ -135,11 +135,9 @@ QModelIndex TreeModel::parent(const QModelIndex& index) const
 //-----------------------------------------------------------------------------
 int TreeModel::rowCount(const QModelIndex& parent) const
 {
-  if(!parent.isValid()) return m_factory->items().at(0)->rowCount();
+  if(!parent.isValid()) return m_factory->items().at(0)->childrenCount();
 
-  auto item = getItem(parent);
-
-  return item->rowCount();
+  return getItem(parent)->childrenCount();
 }
 
 //-----------------------------------------------------------------------------
@@ -177,7 +175,7 @@ void TreeModel::createSubdirectory(Item* parent, const QString &name)
 {
   auto idx = indexOf(parent);
   auto children = parent->children();
-  const auto childrenSize = parent->rowCount();
+  const auto childrenSize = parent->childrenCount();
   int row = 0;
   std::for_each(children.cbegin(), children.cend(), [&row, name](const Item *i) { if(i->isVisible() && i->name() < name) ++row; });
 
@@ -194,15 +192,14 @@ void TreeModel::createSubdirectory(Item* parent, const QString &name)
 //-----------------------------------------------------------------------------
 void TreeModel::removeItem(Item* item)
 {
+  // NOTE: doesn't need to be recursive, Qt will remove the children too.
   assert(item != m_factory->items().at(0));
 
   auto itemIndex = indexOf(item);
 
   beginRemoveRows(indexOf(item->parent()), itemIndex.row(), itemIndex.row());
 
-  item->parent()->removeChild(item);
-
-  delete item;
+  m_factory->deleteItem(item);
 
   endRemoveRows();
 }
@@ -236,7 +233,7 @@ void TreeModel::setFilter(const QString& text)
 Item* TreeModel::findVisibleItem(Item *parent, int row) const
 {
   unsigned int urow = row;
-  if(parent && urow < parent->rowCount())
+  if(parent && urow < parent->childrenCount())
   {
     unsigned int count = 0;
 
@@ -262,7 +259,7 @@ Item* TreeModel::findVisibleItem(Item *parent, int row) const
 }
 
 //-----------------------------------------------------------------------------
-QModelIndex TreeModel::indexOf(Item* item) const
+QModelIndex TreeModel::indexOf(Item* item, int column) const
 {
   if(item && item->id() != 0)
   {
@@ -282,9 +279,10 @@ QModelIndex TreeModel::indexOf(Item* item) const
     auto it = std::find_if(children.cbegin(), children.cend(), computeRow);
     if(it != children.cend())
     {
-      return createIndex(row, 0, item);
+      return createIndex(row, column, item);
     }
   }
 
   return QModelIndex();
 }
+
