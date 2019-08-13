@@ -20,6 +20,9 @@
 #ifndef SETTINGSDIALOG_H_
 #define SETTINGSDIALOG_H_
 
+// C+
+#include <winsock2.h>
+
 // Project
 #include <Utils/Utils.h>
 #include "ui_SettingsDialog.h"
@@ -27,6 +30,12 @@
 // Qt
 #include <QWidget>
 #include <QDialog>
+
+// AWS
+#include <aws/core/Aws.h>
+#include <aws/core/auth/AWSCredentials.h>
+#include <aws/s3/model/AccessControlPolicy.h>
+#include <aws/s3/model/Permission.h>
 
 /** \class SettingsDialog
  * \brief Implements a dialog to manipulate application settings.
@@ -74,6 +83,12 @@ class SettingsDialog
      *
      */
     void onDownloadPathButtonClicked();
+
+    /** \brief Checks the user permissions on the bucket and shows in the UI.
+     *
+     */
+    void onPermissionsButtonClicked();
+
   private:
     /** \brief Helper method to connect Ui signals to slots.
      *

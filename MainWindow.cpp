@@ -73,7 +73,7 @@ MainWindow::~MainWindow()
 //-----------------------------------------------------------------------------
 void MainWindow::restoreConfiguration()
 {
-  QSettings settings(Utils::dataPath() + QDir::separator() + "SuperPato.ini", QSettings::IniFormat);
+  QSettings settings(Utils::dataPath() + QDir::separator() + "SuperDuck.ini", QSettings::IniFormat);
 
   if(settings.contains(STATE))
   {
@@ -91,7 +91,7 @@ void MainWindow::restoreConfiguration()
 //-----------------------------------------------------------------------------
 void MainWindow::saveConfiguration()
 {
-  QSettings settings(Utils::dataPath() + QDir::separator() + "SuperPato.ini", QSettings::IniFormat);
+  QSettings settings(Utils::dataPath() + QDir::separator() + "SuperDuck.ini", QSettings::IniFormat);
 
   settings.setValue(STATE, saveState());
   settings.setValue(GEOMETRY, saveGeometry());
@@ -121,7 +121,7 @@ void MainWindow::onExportActionTriggered()
   }
 
   auto dateTimeString = QDateTime::currentDateTime().toString("dd.mm.yyyy-hh.mm");
-  auto suggestion = tr("Pato selected objects %1.xls").arg(dateTimeString);
+  auto suggestion = tr("SuperDuck selected objects %1.xls").arg(dateTimeString);
   auto path = QStandardPaths::standardLocations(QStandardPaths::DocumentsLocation).first();
   auto filename = QFileDialog::getSaveFileName(this, tr("Save file list"), QDir(m_configuration.DownloadPath).absoluteFilePath(suggestion), tr("Excel files (*.xls);;CSV files (*.csv)"));
 
@@ -195,6 +195,11 @@ void MainWindow::onSettingsButtonTriggered()
     {
       m_configuration = config;
     }
+  }
+
+  if(!m_configuration.isValid())
+  {
+    QMessageBox::warning(this, tr("SuperDuck"), tr("Without valid AWS credentials file uploads, downloads or removal are not possible."));
   }
 }
 
@@ -433,21 +438,14 @@ void MainWindow::showEvent(QShowEvent* e)
 {
   QMainWindow::showEvent(e);
 
-  if(!m_configuration.isValid())
-  {
-    QTimer::singleShot(0, this, SLOT(onInvalidConfiguration()));
-  }
+  if(!m_configuration.isValid()) QTimer::singleShot(0, this, SLOT(onInvalidConfiguration()));
 }
 
 //-----------------------------------------------------------------------------
 void MainWindow::onInvalidConfiguration()
 {
-  while(!m_configuration.isValid())
-  {
-    QMessageBox::information(this, QApplication::applicationName(), tr("AWS configuration is not valid!"));
-
-    onSettingsButtonTriggered();
-  }
+  QMessageBox::information(this, QApplication::applicationName(), tr("AWS configuration is not valid!"));
+  onSettingsButtonTriggered();
 }
 
 //-----------------------------------------------------------------------------
@@ -466,38 +464,59 @@ void MainWindow::onOperationFinished()
   auto thread = qobject_cast<AWSUtils::S3Thread *>(sender());
   if(thread)
   {
-    auto operation = thread->operation();
+    const auto items = getSelectedItems();
+    const auto operation = thread->operation();
+    const auto &errors = thread->errors();
 
-    if(!thread->errors().isEmpty())
+    if(!errors.isEmpty())
     {
-      const auto errorList = thread->errors();
+      QString details = tr("There has been errors in the following objects:");
+      for(auto i = errors.cbegin(); i != errors.cend(); ++i)
+      {
+        details += tr("\n%1: %2").arg(i.key()).arg(i.value().join('\n'));
+      }
 
       QMessageBox msgBox(this);
       msgBox.setWindowTitle(tr("%1 operation").arg(AWSUtils::operationTypeToText(operation.type)));
       msgBox.setWindowIcon(QIcon(":/Pato/rubber_duck.svg"));
       msgBox.setText(tr("The operation finished with errors."));
-      msgBox.setDetailedText(errorList.join('\n'));
+      msgBox.setDetailedText(details);
       msgBox.setIcon(QMessageBox::Icon::Critical);
       msgBox.setStandardButtons(QMessageBox::Ok);
 
       msgBox.exec();
     }
-    else
+
+    auto itemsWithErrors = errors.keys();
+
+    switch(operation.type)
     {
-      switch(operation.type)
-      {
-        case AWSUtils::OperationType::remove:
-          // TODO
-          updateStatusLabel();
-          break;
-        case AWSUtils::OperationType::upload:
-          // TODO
-          updateStatusLabel();
-          break;
-        case AWSUtils::OperationType::download:
-        default:
-          break;
-      }
+      case AWSUtils::OperationType::remove:
+        for(auto it = items.begin(); it != items.end(); ++it)
+        {
+          if(!itemsWithErrors.contains((*it)->fullName())) m_factory->deleteItem(*it);
+        }
+        updateStatusLabel();
+        break;
+      case AWSUtils::OperationType::upload:
+        {
+          auto parentItem = items.at(0);
+          for(auto it = operation.keys.cbegin(); it != operation.keys.cend(); ++it)
+          {
+            const auto pair = (*it);
+            const auto filename = QString::fromStdString(pair.first);
+            if(!itemsWithErrors.contains(filename))
+            {
+              QFileInfo info(filename);
+              m_factory->createItem(info.fileName(), parentItem, pair.second, Type::File);
+            }
+          }
+        }
+        updateStatusLabel();
+        break;
+      case AWSUtils::OperationType::download:
+      default:
+        break;
     }
 
     delete thread;

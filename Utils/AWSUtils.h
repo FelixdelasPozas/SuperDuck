@@ -20,15 +20,19 @@
 #ifndef AWSUTILS_H_
 #define AWSUTILS_H_
 
+// C++
+#include <vector>
+#include <winsock2.h>
+
 // AWS
 #include <aws/core/auth/AWSCredentialsProvider.h>
 #include <aws/core/auth/AWSCredentials.h>
-
-// C++
-#include <vector>
+#include <aws/s3/model/Permission.h>
+#include <aws/transfer/TransferManager.h>
 
 // Qt
 #include <QThread>
+#include <QMap>
 
 namespace AWSUtils
 {
@@ -51,6 +55,12 @@ namespace AWSUtils
    *
    */
   QString operationTypeToText(const OperationType &type);
+
+  /** \brief Helper method that returns the text equivalent of the permission.
+   * \param[in] permission AWS model permission enum.
+   *
+   */
+  QString permissionToText(Aws::S3::Model::Permission permission);
 
   static const QString DELIMITER =  "/";
 
@@ -96,7 +106,7 @@ namespace AWSUtils
       /** \brief Returns the list of errors of the operation, if any.
        *
        */
-      QStringList errors() const
+      QMap<QString, QStringList> errors() const
       { return m_errors; }
 
       /** \brief Returns the operation data.
@@ -121,24 +131,18 @@ namespace AWSUtils
       void message(const QString &);
 
     private:
-      /** \brief Downloads objects.
+      /** \brief Returns the index of the given key in the operation keys.
+       * \param[in] key Text string.
        *
        */
-      void downloadOperation();
+      int findCurrentFileIndex(const QString &key);
 
-      /** \brief Uploads objects.
-       *
-       */
-      void uploadOperation();
+      const Operation            m_operation; /** operation structure.                                 */
+      QMap<QString, QStringList> m_errors;    /** maps objects with its errors, empty if successful.   */
+      bool                       m_abort;     /** true if the task needs to abort or has been aborted. */
+      unsigned int               m_fileCount; /** transfer files count.                                */
 
-      /** \brief Removes objects.
-       *
-       */
-      void removeOperation();
-
-      const Operation m_operation; /** operation structure.                                 */
-      QStringList     m_errors;    /** list of errors or empty if successful.               */
-      bool            m_abort;     /** true if the task needs to abort or has been aborted. */
+      std::shared_ptr<Aws::Transfer::TransferManager> m_manager; /** AWS transfer manager shared pointer. */
   };
 };
 

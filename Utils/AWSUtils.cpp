@@ -27,17 +27,29 @@
 #include <aws/core/Aws.h>
 #include <aws/core/utils/logging/AWSLogging.h>
 #include <aws/core/utils/logging/DefaultLogSystem.h>
+#include <aws/core/utils/threading/ThreadTask.h>
+#include <aws/core/client/ClientConfiguration.h>
+#include <aws/core/utils/memory/stl/AWSAllocator.h>
 #include <aws/s3/S3Client.h>
-#include <aws/s3/model/ListObjectsRequest.h>
+#include <aws/s3/model/DeleteObjectRequest.h>
 #include <aws/s3/model/Object.h>
+#include <aws/transfer/TransferHandle.h>
+
+// Qt
+#include <QFileInfo>
 
 using namespace Aws;
+using namespace Aws::Transfer;
+
+static const char *ALLOCATION_TAG = "SuperDuckTransfer";
 
 //-----------------------------------------------------------------------------
 AWSUtils::S3Thread::S3Thread(Operation operation, QObject* parent)
 : QThread(parent)
 , m_operation(operation)
 , m_abort{false}
+, m_fileCount{0}
+, m_manager{nullptr}
 {
 }
 
@@ -46,27 +58,167 @@ void AWSUtils::S3Thread::run()
 {
   if(m_operation.useLogging)
   {
-    Utils::Logging::InitializeAWSLogging(MakeShared<Utils::Logging::DefaultLogSystem>("RunUnitTests", Utils::Logging::LogLevel::Trace, "aws_sdk_"));
+    Utils::Logging::InitializeAWSLogging(MakeShared<Utils::Logging::DefaultLogSystem>(ALLOCATION_TAG, Utils::Logging::LogLevel::Trace, "aws_sdk_"));
   }
 
   SDKOptions options;
   InitAPI(options);
 
-  switch(m_operation.type)
+  Aws::Client::ClientConfiguration clientConfig;
+  clientConfig.region = m_operation.region;
+  clientConfig.connectTimeoutMs = 30000;
+  clientConfig.requestTimeoutMs = 30000;
+
+  auto executor  = Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>(ALLOCATION_TAG, 4);
+  auto s3_client = Aws::MakeShared<Aws::S3::S3Client>(ALLOCATION_TAG, m_operation.credentials, clientConfig);
+
+  int progressValue = 0;
+  int globalProgressValue = 0;
+  QString fileNameKey;
+
+  if(m_operation.type == AWSUtils::OperationType::remove)
   {
-    case OperationType::download:
-      downloadOperation();
-      break;
-    case OperationType::upload:
-      uploadOperation();
-      break;
-    case OperationType::remove:
-      removeOperation();
-      break;
-    default:
-      m_errors << "Undefined operation.";
-      break;
+    unsigned int count = 0;
+    for(auto it = m_operation.keys.cbegin(); it != m_operation.keys.cend() && !m_abort; ++it)
+    {
+      auto p = *it;
+      auto shortName = QFileInfo(QString::fromStdString(p.first)).fileName();
+      emit message(operationTypeToText(m_operation.type) + ": " + shortName);
+
+      auto filename = Aws::String(p.first.c_str(), p.first.length());
+
+      Aws::S3::Model::DeleteObjectRequest object_request;
+      object_request.WithBucket(m_operation.bucket).WithKey(filename);
+
+      auto result = s3_client->DeleteObject(object_request);
+
+      if(m_abort) break;
+
+      if (!result.IsSuccess())
+      {
+        const auto error = result.GetError();
+        auto exceptionName = AWSUtils::toQString(error.GetExceptionName());
+        auto errorMessage = AWSUtils::toQString(error.GetMessage());
+        m_errors[QString::fromStdString(p.first)] << exceptionName + " -> " + errorMessage;
+      }
+
+      int pValue = (++count * 100)/m_operation.keys.size();
+      if(progressValue != pValue)
+      {
+        progressValue = pValue;
+        emit globalProgress(progressValue);
+      }
+    }
   }
+  else
+  {
+    auto transferCallback = [&](const TransferManager *tm, const std::shared_ptr<const TransferHandle> &th)
+    {
+      auto fileKey = AWSUtils::toQString(th->GetKey());
+      if(fileNameKey != fileKey)
+      {
+        fileNameKey = fileKey;
+        auto shortName = QFileInfo(fileKey).fileName();
+        emit message(operationTypeToText(m_operation.type) + ": " + shortName);
+      }
+
+      auto total = th->GetBytesTotalSize();
+      auto current = th->GetBytesTransferred();
+      int pValue = (current * 100)/total;
+
+      if(progressValue != pValue)
+      {
+        progressValue = pValue;
+        emit progress(pValue);
+      }
+
+      int gValue = (m_fileCount * 100)/m_operation.keys.size();
+      if(globalProgressValue != gValue)
+      {
+        globalProgressValue = gValue;
+        emit globalProgress(gValue);
+      }
+    };
+
+    TransferManagerConfiguration transferManagerConfig(executor.get());
+    transferManagerConfig.s3Client = s3_client;
+    transferManagerConfig.downloadProgressCallback = transferCallback;
+    transferManagerConfig.uploadProgressCallback = transferCallback;
+
+    m_manager = TransferManager::Create(transferManagerConfig);
+
+    if(m_operation.type == AWSUtils::OperationType::download)
+    {
+      std::shared_ptr<TransferHandle> downloadHandle;
+      for(auto it = m_operation.keys.cbegin(); it != m_operation.keys.cend(); ++it)
+      {
+        auto p = *it;
+        auto fKey = Aws::String(p.first.c_str(), p.first.length());
+        auto fNameStr = QFileInfo(QString::fromStdString(p.first)).fileName();
+        auto fName = AWSUtils::toAwsString(fNameStr);
+        downloadHandle = m_manager->DownloadFile(fKey, m_operation.bucket, fName);
+        downloadHandle->WaitUntilFinished();
+
+        ++m_fileCount;
+
+        int retries = 0;
+        while(downloadHandle->GetStatus() == TransferStatus::FAILED && retries++ < 5)
+        {
+          m_manager->RetryDownload(downloadHandle);
+          downloadHandle->WaitUntilFinished();
+        }
+
+        if(downloadHandle->GetStatus() != TransferStatus::COMPLETED)
+        {
+          const auto error = downloadHandle->GetLastError();
+          auto exceptionName = AWSUtils::toQString(error.GetExceptionName());
+          auto errorMessage = AWSUtils::toQString(error.GetMessage());
+          m_errors[QString::fromStdString(p.first)] << exceptionName + " -> " + errorMessage;
+        }
+
+        if(m_abort) break;
+      }
+    }
+    else
+    {
+      assert(m_operation.type == AWSUtils::OperationType::upload);
+
+      std::shared_ptr<TransferHandle> uploadHandle;
+      for(auto it = m_operation.keys.cbegin(); it != m_operation.keys.cend(); ++it)
+      {
+        auto p = *it;
+        auto fName = Aws::String(p.first.c_str(), p.first.length());
+        auto baseFile = QFileInfo(QString::fromStdString(p.first)).fileName();
+        auto baseFileAws = AWSUtils::toAwsString(baseFile);
+        auto fKeyStr = m_operation.parameters + baseFileAws;
+        uploadHandle = m_manager->UploadFile(fName, m_operation.bucket,  baseFileAws, "binary", Aws::Map<Aws::String, Aws::String>());
+        uploadHandle->WaitUntilFinished();
+
+        ++m_fileCount;
+
+        int retries = 0;
+        while(uploadHandle->GetStatus() == TransferStatus::FAILED && retries++ < 5)
+        {
+          m_manager->RetryUpload(fName, uploadHandle);
+          uploadHandle->WaitUntilFinished();
+        }
+
+        if(uploadHandle->GetStatus() != TransferStatus::COMPLETED)
+        {
+          const auto error = uploadHandle->GetLastError();
+          auto exceptionName = AWSUtils::toQString(error.GetExceptionName());
+          auto errorMessage = AWSUtils::toQString(error.GetMessage());
+          m_errors[QString::fromStdString(p.first)] << exceptionName + " -> " + errorMessage;
+        }
+
+        if(m_abort) break;
+      }
+    }
+  }
+
+  emit progress(100);
+  emit globalProgress(100);
+  emit message("Finished!");
 
   ShutdownAPI(options);
 
@@ -77,73 +229,9 @@ void AWSUtils::S3Thread::run()
 }
 
 //-----------------------------------------------------------------------------
-void AWSUtils::S3Thread::downloadOperation()
-{
-  emit globalProgress(10);
-  emit message("Configuring operation");
-
-  Aws::Client::ClientConfiguration clientConfig;
-  clientConfig.region = m_operation.region;
-
-  S3::S3Client s3_client(m_operation.credentials, clientConfig);
-
-  S3::Model::ListObjectsRequest objects_request;
-  objects_request.WithBucket(m_operation.bucket);
-
-  emit globalProgress(30);
-  emit message("Starting operation");
-
-  auto list_objects_outcome = s3_client.ListObjects(objects_request);
-
-  bool retry = true;
-  int count = 0;
-  while (count < 3 && retry)
-  {
-    if (list_objects_outcome.IsSuccess())
-    {
-      auto object_list = list_objects_outcome.GetResult().GetContents();
-
-      for (auto const &s3_object : object_list)
-      {
-        std::cout << "* " << s3_object.GetKey() << std::endl;
-      }
-
-      retry = false;
-    }
-    else
-    {
-      const auto error = list_objects_outcome.GetError();
-
-      const auto exceptionName = error.GetExceptionName();
-      const auto message = error.GetMessage();
-      m_errors << QString::fromLocal8Bit(exceptionName.c_str(), exceptionName.length());
-      m_errors << QString::fromLocal8Bit(message.c_str(), message.length());
-
-      retry = error.ShouldRetry();
-    }
-  }
-  emit message("Ending operation");
-  emit globalProgress(100);
-}
-
-//-----------------------------------------------------------------------------
-void AWSUtils::S3Thread::uploadOperation()
-{
-  // TODO
-}
-
-//-----------------------------------------------------------------------------
-void AWSUtils::S3Thread::removeOperation()
-{
-  // TODO
-}
-
-//-----------------------------------------------------------------------------
 void AWSUtils::S3Thread::abort()
 {
   m_abort = true;
-
-  // TODO: how to stop?
 }
 
 //-----------------------------------------------------------------------------
@@ -173,6 +261,66 @@ QString AWSUtils::operationTypeToText(const OperationType& type)
       return "Upload";
       break;
     default:
+      break;
+  }
+
+  return QString();
+}
+
+//-----------------------------------------------------------------------------
+int AWSUtils::S3Thread::findCurrentFileIndex(const QString& key)
+{
+  int result = 0;
+
+  std::vector<std::pair<std::string, unsigned long long>>::const_iterator it;
+
+  if(m_operation.type == AWSUtils::OperationType::download)
+  {
+    auto findKey = [&key](const std::pair<std::string, unsigned long long> &p) { return key == QString::fromStdString(p.first); };
+    it = std::find_if(m_operation.keys.cbegin(), m_operation.keys.cend(), findKey);
+  }
+  else
+  {
+    auto findKey = [&key](const std::pair<std::string, unsigned long long> &p)
+    {
+      QFileInfo keyInfo(key);
+      QFileInfo other(QString::fromStdString(p.first));
+      return keyInfo.fileName() == other.fileName();
+    };
+    it = std::find_if(m_operation.keys.cbegin(), m_operation.keys.cend(), findKey);
+  }
+
+  if(it != m_operation.keys.cend())
+  {
+    result = std::distance(m_operation.keys.cbegin(), it);
+  }
+
+  return result;
+}
+
+//-----------------------------------------------------------------------------
+QString AWSUtils::permissionToText(Aws::S3::Model::Permission permission)
+{
+  switch(permission)
+  {
+    case Aws::S3::Model::Permission::FULL_CONTROL:
+      return "FULL CONTROL";
+      break;
+    case Aws::S3::Model::Permission::WRITE:
+      return "WRITE";
+      break;
+    case Aws::S3::Model::Permission::READ:
+      return "READ";
+      break;
+    case Aws::S3::Model::Permission::WRITE_ACP:
+      return "WRITE_ACP";
+      break;
+    case Aws::S3::Model::Permission::READ_ACP:
+      return "READ_ACP";
+      break;
+    case Aws::S3::Model::Permission::NOT_SET:
+    default:
+      return "NOT SET";
       break;
   }
 

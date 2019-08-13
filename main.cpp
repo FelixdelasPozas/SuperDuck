@@ -194,17 +194,19 @@ int main(int argc, char **argv)
   qInstallMessageHandler(myMessageOutput);
 
   QApplication app(argc, argv);
-  app.setApplicationName("SuperPato");
+  app.setApplicationName("SuperDuck");
 
   // allow only one instance running
   QSharedMemory guard;
   guard.setKey("SuperDuck");
 
+  const auto title = QObject::tr("Super Duck");
+
   if (!guard.create(1))
   {
     QMessageBox msgbox;
     msgbox.setWindowIcon(QIcon(":/Pato/rubber-duck.ico"));
-    msgbox.setWindowTitle(QObject::tr("Super Pato"));
+    msgbox.setWindowTitle(title);
     msgbox.setIcon(QMessageBox::Information);
     msgbox.setText(QObject::tr("An instance is already running!"));
     msgbox.setStandardButtons(QMessageBox::Ok);
@@ -231,7 +233,7 @@ int main(int argc, char **argv)
     {
       QMessageBox msgbox;
       msgbox.setWindowIcon(QIcon(":/Pato/rubber-duck.ico"));
-      msgbox.setWindowTitle(QObject::tr("Super Pato"));
+      msgbox.setWindowTitle(title);
       msgbox.setIcon(QMessageBox::Information);
       msgbox.setText(QObject::tr("Unable to create application data path!"));
       msgbox.setStandardButtons(QMessageBox::Ok);
@@ -245,15 +247,25 @@ int main(int argc, char **argv)
   {
     if(!QFile::copy(Utils::DATABASE_NAME, Utils::databaseFile()))
     {
-      QMessageBox msgbox;
-      msgbox.setWindowIcon(QIcon(":/Pato/rubber-duck.ico"));
-      msgbox.setWindowTitle(QObject::tr("Super Pato"));
-      msgbox.setIcon(QMessageBox::Information);
-      msgbox.setText(QObject::tr("Unable to copy database to data path!"));
-      msgbox.setStandardButtons(QMessageBox::Ok);
-      msgbox.exec();
+      // create an empty one.
+      std::ofstream newDatabase(Utils::databaseFile().toStdString(), std::ios_base::trunc|std::ios_base::out);
+      if(newDatabase.is_open())
+      {
+        newDatabase << "---" << std::endl;
+        newDatabase.close();
+      }
+      else
+      {
+        QMessageBox msgbox;
+        msgbox.setWindowIcon(QIcon(":/Pato/rubber-duck.ico"));
+        msgbox.setWindowTitle(title);
+        msgbox.setIcon(QMessageBox::Information);
+        msgbox.setText(QObject::tr("Unable to create a new database in data path!"));
+        msgbox.setStandardButtons(QMessageBox::Ok);
+        msgbox.exec();
 
-      return 0;
+        return 0;
+      }
     }
   }
 
@@ -278,7 +290,7 @@ int main(int argc, char **argv)
   {
     QMessageBox msgbox;
     msgbox.setWindowIcon(QIcon(":/Pato/rubber-duck.ico"));
-    msgbox.setWindowTitle(QObject::tr("Super Pato"));
+    msgbox.setWindowTitle(title);
     msgbox.setIcon(QMessageBox::Information);
     msgbox.setText(QObject::tr("Unable to find database!"));
     msgbox.setStandardButtons(QMessageBox::Ok);

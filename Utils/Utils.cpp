@@ -108,7 +108,7 @@ bool Utils::Configuration::isValid() const
 //-----------------------------------------------------------------------------
 void Utils::Configuration::load()
 {
-  QSettings settings(Utils::dataPath() + SEPARATOR + "SuperPato.ini", QSettings::IniFormat);
+  QSettings settings(Utils::dataPath() + SEPARATOR + "SuperDuck.ini", QSettings::IniFormat);
 
   AWS_Access_key_id     = settings.value(AWS_KEY_ID,     QString()).toString();
   AWS_Secret_access_key = settings.value(AWS_SECRET_KEY, QString()).toString();
@@ -124,7 +124,7 @@ void Utils::Configuration::load()
 //-----------------------------------------------------------------------------
 void Utils::Configuration::save()
 {
-  QSettings settings(Utils::dataPath() + SEPARATOR + "SuperPato.ini", QSettings::IniFormat);
+  QSettings settings(Utils::dataPath() + SEPARATOR + "SuperDuck.ini", QSettings::IniFormat);
 
   settings.setValue(AWS_KEY_ID,     AWS_Access_key_id);
   settings.setValue(AWS_SECRET_KEY, AWS_Secret_access_key);

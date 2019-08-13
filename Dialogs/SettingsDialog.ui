@@ -7,19 +7,19 @@
     <x>0</x>
     <y>0</y>
     <width>551</width>
-    <height>435</height>
+    <height>463</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>551</width>
-    <height>435</height>
+    <height>463</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
     <width>551</width>
-    <height>435</height>
+    <height>463</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -92,6 +92,46 @@ QGroupBox::title {
       </item>
       <item row="3" column="1">
        <widget class="QComboBox" name="m_regionCombo"/>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label_7">
+        <property name="text">
+         <string>Permssions</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <layout class="QHBoxLayout" name="horizontalLayout_4">
+        <item>
+         <widget class="QLineEdit" name="m_permissionsLineEdit">
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
+          <property name="placeholderText">
+           <string>User permissions not checked!</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QToolButton" name="m_permissionsButton">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>20</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>20</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Check!</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>

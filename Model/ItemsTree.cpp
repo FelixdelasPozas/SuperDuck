@@ -203,6 +203,11 @@ void ItemFactory::deserializeItems(std::ifstream& stream, SplashScreen *splash, 
 
       std::getline(stream, line);
 
+      if(line.empty())
+      {
+        continue;
+      }
+
       auto qLine = QString::fromStdString(line);
       auto parts = qLine.split(' ');
 
@@ -239,15 +244,23 @@ void ItemFactory::deserializeItems(std::ifstream& stream, SplashScreen *splash, 
   };
   std::for_each(begin(m_items), end(m_items), sortChildren);
 
+  if(m_items.empty())
+  {
+    // create root item.
+    createItem("", nullptr, 0, Type::Directory);
+  }
+  else
+  {
+    auto it = std::find_if(m_items.cbegin() + 1, m_items.cend(), [](Item *i){ return i && !i->parent() && i->id() != 0; });
+    if(it != m_items.cend())
+    {
+      QMessageBox::critical(nullptr, "Database", "Error loading the database");
+      exit(0);
+    }
+  }
+
   assert(m_counter == m_items.size());
   assert((m_items.at(0)->id() == 0) && (m_items.at(0)->name() == ""));
-
-  auto it = std::find_if(m_items.cbegin() + 1, m_items.cend(), [](Item *i){ return i && !i->parent() && i->id() != 0; });
-  if(it != m_items.cend())
-  {
-    QMessageBox::critical(nullptr, "Database", "Error loading the database");
-    exit(0);
-  }
 }
 
 //-----------------------------------------------------------------------------

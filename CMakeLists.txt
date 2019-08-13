@@ -1,4 +1,4 @@
-project (SuperPato)
+project (SuperDuck)
 
 cmake_minimum_required (VERSION 2.8.6)
 
@@ -54,7 +54,7 @@ set(CMAKE_CXX_FLAGS " -Wall -Wno-deprecated -std=c++11")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt5Core_EXECUTABLE_COMPILE_FLAGS}")
 
-configure_file("${PROJECT_SOURCE_DIR}/ElPato.rc.in" "${PROJECT_BINARY_DIR}/ElPato.rc")
+configure_file("${PROJECT_SOURCE_DIR}/SuperDuck.rc.in" "${PROJECT_BINARY_DIR}/SuperDuck.rc")
 
 set (CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> -O coff -o <OBJECT> -i <SOURCE>")
 ENABLE_LANGUAGE(RC)
@@ -66,7 +66,7 @@ qt5_add_resources(RESOURCES
 
 set (SOURCES 
 	${RESOURCES}
-	${PROJECT_BINARY_DIR}/ElPato.rc
+	${PROJECT_BINARY_DIR}/SuperDuck.rc
 	Dialogs/SplashScreen.cpp
 	Dialogs/SettingsDialog.cpp
 	Dialogs/ProgressDialog.cpp
@@ -92,6 +92,6 @@ set (LIBRARIES
 	version
 	)
 	
-add_executable(SuperPato ${SOURCES})
-target_link_libraries (SuperPato ${LIBRARIES})
+add_executable(SuperDuck ${SOURCES})
+target_link_libraries (SuperDuck ${LIBRARIES})
 	

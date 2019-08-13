@@ -20,11 +20,18 @@
 // Project
 #include <Dialogs/SettingsDialog.h>
 #include <Utils/Utils.h>
+#include <Utils/AWSUtils.h>
 
 // Qt
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QDir>
+#include <QDebug>
+
+// AWS
+#include <aws/core/Aws.h>
+#include <aws/s3/S3Client.h>
+#include <aws/s3/model/GetBucketAclRequest.h>
 
 const QStringList REGIONS = { "us-east-1", "us-east-2", "us-west-1", "us-west-2", "ca-central-1",
                               "eu-central-1", "eu-west-1", "eu-west-2", "eu-west-3", "eu-north-1",
@@ -78,6 +85,7 @@ void SettingsDialog::connectSignals()
 {
   connect(m_dirButton, SIGNAL(clicked(bool)), this, SLOT(onFolderButtonClicked()));
   connect(m_downloadButton, SIGNAL(clicked(bool)), this, SLOT(onDownloadPathButtonClicked()));
+  connect(m_permissionsButton, SIGNAL(clicked(bool)), this, SLOT(onPermissionsButtonClicked()));
 }
 
 //-----------------------------------------------------------------------------
@@ -211,4 +219,57 @@ void SettingsDialog::onDownloadPathButtonClicked()
       QMessageBox::critical(this, title, tr("'%1' does not appear to be a valid directory or can't write in it.").arg(path));
     }
   }
+}
+
+//-----------------------------------------------------------------------------
+void SettingsDialog::onPermissionsButtonClicked()
+{
+  const auto key = m_keyId->text();
+  const auto access_key = m_accessKey->text();
+
+  if(key.isEmpty() || key.length() != 20 || access_key.isEmpty() || access_key.length() != 40)
+  {
+    QMessageBox::warning(this, tr("Check AWS permissions"), tr("Cannot check without valid AWS credentials"));
+    return;
+  }
+
+  Aws::SDKOptions options;
+  Aws::InitAPI(options);
+  {
+    auto credentials = Aws::Auth::AWSCredentials(AWSUtils::toAwsString(m_keyId->text()), AWSUtils::toAwsString(m_accessKey->text()));
+
+    Aws::Client::ClientConfiguration clientConfig;
+    clientConfig.region = AWSUtils::toAwsString(REGIONS.at(m_regionCombo->currentIndex()));
+    clientConfig.connectTimeoutMs = 30000;
+    clientConfig.requestTimeoutMs = 30000;
+
+    // Set up the get request
+    Aws::S3::S3Client s3_client(credentials, clientConfig);
+
+    Aws::S3::Model::GetBucketAclRequest get_request;
+    auto bucket = AWSUtils::toAwsString(m_bucket->text());
+    get_request.SetBucket(bucket);
+
+    // Get the current access control policy
+    auto result = s3_client.GetBucketAcl(get_request);
+    if (!result.IsSuccess())
+    {
+      auto error = result.GetError();
+      auto message = tr("Error: %1. %2.").arg(AWSUtils::toQString(error.GetExceptionName())).arg(AWSUtils::toQString(error.GetMessage()));
+      m_permissionsLineEdit->setText(message);
+    }
+    else
+    {
+      QStringList permissions;
+      auto grants = result.GetResult().GetGrants();
+      for (auto & grant : grants)
+      {
+        permissions << AWSUtils::permissionToText(grant.GetPermission());
+      }
+
+      auto text = permissions.join(" + ");
+      m_permissionsLineEdit->setText(text);
+    }
+  }
+  Aws::ShutdownAPI(options);
 }
