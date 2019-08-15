@@ -1,0 +1,39 @@
+; Mingw64 Distribution Inno Setup File
+
+[Setup]
+AppName=I don't give a duck!
+AppVersion=@SUPER_DUCK_VERSION_MAJOR@.@SUPER_DUCK_VERSION_MINOR@.@SUPER_DUCK_VERSION_PATCH@
+DefaultDirName={pf64}\Super Duck
+DefaultGroupName=Super Duck
+OutputDir=@PROJECT_BINARY_DIR@
+AppComments=Super Duck
+AppContact=Felix de las Pozas Alvarez
+AppCopyright=(c)2019 Felix de las Pozas Alvarez
+AppPublisher=Felix de las Pozas Alvarez
+ArchitecturesAllowed=x64
+Compression=lzma2/ultra64
+CreateUninstallRegKey=yes
+Uninstallable=yes
+DisableFinishedPage=no
+DisableWelcomePage=no
+ChangesAssociations=no
+CloseApplications=yes
+UninstallDisplayIcon=@CMAKE_SOURCE_DIR@/resources/rubber-duck.ico
+UninstallDisplayName=Super Duck v@SUPER_DUCK_VERSION_MAJOR@.@SUPER_DUCK_VERSION_MINOR@.@SUPER_DUCK_VERSION_PATCH@
+SourceDir=@PROJECT_BINARY_DIR@
+SetupIconFile=@CMAKE_SOURCE_DIR@/resources/rubber-duck.ico
+OutputBaseFilename=Super_Duck_v@SUPER_DUCK_VERSION_MAJOR@.@SUPER_DUCK_VERSION_MINOR@.@SUPER_DUCK_VERSION_PATCH@_Setup
+WizardImageFile=@CMAKE_SOURCE_DIR@/installer/image.bmp
+WizardSmallImageFile=@CMAKE_SOURCE_DIR@/installer/smallimage.bmp
+
+[Files]
+Source: "SuperDuck.exe"; DestDir: "{app}";
+Source: "dbData.txt"; DestDir: "{app}";
+Source: "info.csv"; DestDir: "{app}";
+Source: "*.dll"; DestDir: "{app}";
+Source: "iconengines/*.*"; DestDir: "{app}/iconengines/";
+Source: "imageformats/*.*"; DestDir: "{app}/imageformats/";
+Source: "platforms/*.*"; DestDir: "{app}/platforms/";
+
+[Run]
+Filename: "{app}\SuperDuck.exe"; Description: "Launch Super Duck"; Flags: postinstall nowait skipifsilent unchecked

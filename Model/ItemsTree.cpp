@@ -67,15 +67,16 @@ unsigned long long int ItemFactory::count() const
 }
 
 //-----------------------------------------------------------------------------
-void ItemFactory::serializeItems(std::ofstream& stream, SplashScreen *splash, QApplication *app) const
+void ItemFactory::serializeItems(std::ofstream& stream, SplashScreen *splash, QApplication *app)
 {
   splash->setMessage("Saving database");
   auto size = m_items.size();
   int progress = 0;
   unsigned long long count = 0;
+  m_counter = 0;
 
-  // needed to restore visibility to report correct size.
-  std::for_each(m_items.begin(), m_items.end(), [](Item *i) { if(i) i->setVisible(true); });
+  // needed to restore visibility to report correct size. Also restore ids to consecutive numbers.
+  std::for_each(m_items.begin(), m_items.end(), [&](Item *i) { if(i) { i->m_id = m_counter++; i->setVisible(true); } });
 
   auto serializeItemsState = [&](const Item *i)
   {
@@ -239,29 +240,25 @@ void ItemFactory::deserializeItems(std::ifstream& stream, SplashScreen *splash, 
       unsigned long long id = std::strtoull(parts[0].toStdString().c_str(), nullptr, 10);
       auto children = parts[1].split(':');
 
+      // ids need to be consecutive or this won't work!
       for(auto child: children)
       {
         auto clean = child.trimmed();
-        const long long cid =  std::strtoll(clean.toStdString().c_str(), nullptr, 10);
+        const unsigned long long cid =  std::strtoll(clean.toStdString().c_str(), nullptr, 10);
         if(cid == 0ULL) continue;
 
-        auto idItem = std::find_if(m_items.cbegin(), m_items.cend(), [cid](const Item *i){return i && i->id() == cid; });
-        assert(idItem != m_items.cend());
-        (*idItem)->m_parent = m_items[id];
-        m_items[id]->m_childs.push_back(*idItem);
+        m_items[cid]->m_parent = m_items[id];
+        m_items[id]->m_childs.push_back(m_items[cid]);
       }
     }
   }
 
   stream.close();
   m_modified = false;
-  m_counter = 0;
+  m_counter = m_items.size();
 
   auto sortChildren = [this](Item *i)
   {
-    // reset ids
-    i->m_id = m_counter++;
-
     if(isDirectory(i))
     {
       std::sort(begin(i->m_childs), end(i->m_childs), lessThan);

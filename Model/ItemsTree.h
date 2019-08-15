@@ -67,7 +67,7 @@ class ItemFactory
      * \param[inout] stream Output stream.
      *
      */
-    void serializeItems(std::ofstream &stream, SplashScreen *splash, QApplication *app) const;
+    void serializeItems(std::ofstream &stream, SplashScreen *splash, QApplication *app);
 
     /** \brief Creates items from the information in the given stream.
      * \param[inout] stream Input stream.
