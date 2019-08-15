@@ -251,8 +251,9 @@ int main(int argc, char **argv)
       std::ofstream newDatabase(Utils::databaseFile().toStdString(), std::ios_base::trunc|std::ios_base::out);
       if(newDatabase.is_open())
       {
-        newDatabase << "---" << std::endl;
-        newDatabase.close();
+        newDatabase << "0 d \"\" 0" << std::endl; // root node
+        newDatabase << "---" << std::endl;        // separator
+        newDatabase.close();                      // no relations
       }
       else
       {

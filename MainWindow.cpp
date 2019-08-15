@@ -214,7 +214,13 @@ void MainWindow::onUploadActionTriggered()
     return;
   }
 
-  auto path  = items.front()->fullName();
+  QString path;
+  if(!items.empty())
+  {
+    const auto item = items.front();
+    path = (item->id() == 0 ? "": item->fullName());
+    if(!path.isEmpty() && !path.endsWith(AWSUtils::DELIMITER)) path = path + AWSUtils::DELIMITER;
+  }
   auto files = QFileDialog::getOpenFileNames(this, tr("Upload files"), QDir::homePath());
 
   if(!files.empty())
@@ -245,7 +251,7 @@ void MainWindow::onUploadActionTriggered()
                                                AWSUtils::toAwsString(Utils::rot13(m_configuration.AWS_Secret_access_key)));
     op.keys = std::move(selected);
     op.parameters = Aws::String(path.toStdString().c_str(), path.length());
-    op.useLogging = true;
+    op.useLogging = false;
 
     auto thread = new AWSUtils::S3Thread(op);
     m_threads << thread;
@@ -261,7 +267,7 @@ void MainWindow::onUploadActionTriggered()
 void MainWindow::onDeleteActionTriggered()
 {
   auto items = getSelectedItems();
-  Item *parent;
+  Item *parent = nullptr;
   auto checkParent = [&parent](const Item *i)
   {
     if(!parent) parent = i->parent();
@@ -478,7 +484,7 @@ void MainWindow::onOperationFinished()
 
       QMessageBox msgBox(this);
       msgBox.setWindowTitle(tr("%1 operation").arg(AWSUtils::operationTypeToText(operation.type)));
-      msgBox.setWindowIcon(QIcon(":/Pato/rubber_duck.svg"));
+      msgBox.setWindowIcon(QIcon(":/Pato/rubber-duck.svg"));
       msgBox.setText(tr("The operation finished with errors."));
       msgBox.setDetailedText(details);
       msgBox.setIcon(QMessageBox::Icon::Critical);
@@ -494,13 +500,14 @@ void MainWindow::onOperationFinished()
       case AWSUtils::OperationType::remove:
         for(auto it = items.begin(); it != items.end(); ++it)
         {
-          if(!itemsWithErrors.contains((*it)->fullName())) m_factory->deleteItem(*it);
+          if(!itemsWithErrors.contains((*it)->fullName())) m_model->removeItem(*it);
         }
         updateStatusLabel();
         break;
       case AWSUtils::OperationType::upload:
         {
-          auto parentItem = items.at(0);
+          auto parentItem = items.empty() ? m_factory->items().at(0) : items.at(0);
+          Items items;
           for(auto it = operation.keys.cbegin(); it != operation.keys.cend(); ++it)
           {
             const auto pair = (*it);
@@ -508,9 +515,11 @@ void MainWindow::onOperationFinished()
             if(!itemsWithErrors.contains(filename))
             {
               QFileInfo info(filename);
-              m_factory->createItem(info.fileName(), parentItem, pair.second, Type::File);
+              items.push_back(m_factory->createItem(info.fileName(), parentItem, pair.second, Type::File));
             }
           }
+
+          if(!items.empty()) m_model->addItems(items);
         }
         updateStatusLabel();
         break;
@@ -523,15 +532,19 @@ void MainWindow::onOperationFinished()
   }
   else
   {
-    std::cout << "Error: onOperationFinished() -> Unable to identify sender.";
+    QMessageBox::critical(this, tr("Super Duck"), tr("Error: onOperationFinished() -> Unable to identify sender."));
   }
 }
 
 //-----------------------------------------------------------------------------
 void MainWindow::updateStatusLabel()
 {
+  // must not count root directory
   auto rootItem = m_factory->items().at(0);
-  m_statusLabel->setText(tr("%1 objects in %2 directories totaling %3 bytes.").arg(rootItem->filesNumber()).arg(rootItem->directoriesNumber()).arg(rootItem->size()));
+  const auto files = rootItem->filesNumber();
+  auto directories = rootItem->directoriesNumber();
+  if(directories > 0) --directories; // must not count root directory
+  m_statusLabel->setText(tr("%1 objects in %2 directories totaling %3 bytes.").arg(files).arg(directories).arg(rootItem->size()));
 }
 
 //-----------------------------------------------------------------------------
@@ -543,6 +556,7 @@ void MainWindow::closeEvent(QCloseEvent* e)
     {
       if(!t->isFinished())
       {
+        t->abort();
         t->thread()->terminate();
       }
 
@@ -551,6 +565,8 @@ void MainWindow::closeEvent(QCloseEvent* e)
     std::for_each(m_threads.begin(), m_threads.end(), stopThread);
     m_threads.clear();
   }
+
+  QMainWindow::closeEvent(e);
 }
 
 //-----------------------------------------------------------------------------

@@ -61,7 +61,8 @@ namespace Utils
   std::map<std::string, unsigned long long> processItems(const Items items);
 
   /** \struct Configuration
-   * \brief Application configuration.
+   * \brief Application configuration. Both key and secret key are stored in rot13, just to
+   * not store it in plain text. However their own .aws/credentials file do it in plain text.
    *
    */
   struct Configuration

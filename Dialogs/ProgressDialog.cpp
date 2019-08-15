@@ -20,6 +20,9 @@
 // Project
 #include <Dialogs/ProgressDialog.h>
 
+// Qt
+#include <QTimer>
+
 //-----------------------------------------------------------------------------
 ProgressDialog::ProgressDialog(AWSUtils::S3Thread* thread, QWidget* parent, Qt::WindowFlags flags)
 : QDialog(parent, flags)
@@ -27,10 +30,12 @@ ProgressDialog::ProgressDialog(AWSUtils::S3Thread* thread, QWidget* parent, Qt::
 {
   setupUi(this);
 
+  setWindowTitle(AWSUtils::operationTypeToText(thread->operation().type) + " operation");
+
   connect(m_thread, SIGNAL(globalProgress(int)), this, SLOT(setGlobalProgress(int)));
   connect(m_thread, SIGNAL(progress(int)), this, SLOT(setProgress(int)));
   connect(m_thread, SIGNAL(message(const QString &)), this, SLOT(setMessage(const QString &)));
-  connect(m_thread, SIGNAL(finished()), this, SLOT(close()));
+  connect(m_thread, SIGNAL(finished()), this, SLOT(onCancelButtonPressed()));
 
   connect(m_cancelButton, SIGNAL(clicked(bool)), this, SLOT(onCancelButtonPressed()));
 }
@@ -40,7 +45,7 @@ void ProgressDialog::showEvent(QShowEvent* e)
 {
   QDialog::showEvent(e);
 
-  m_thread->run();
+  m_thread->start();
 }
 
 //-----------------------------------------------------------------------------
@@ -58,12 +63,14 @@ void ProgressDialog::setProgress(int progress)
 //-----------------------------------------------------------------------------
 void ProgressDialog::setMessage(const QString& message)
 {
-  m_operationLabel->setText(message);
+  m_operationProgress->setFormat(tr("%1 - %p%").arg(message));
 }
 
 //-----------------------------------------------------------------------------
 void ProgressDialog::onCancelButtonPressed()
 {
-  m_thread->abort();
+  auto button = qobject_cast<QPushButton *>(sender());
+  if(button) m_thread->abort();
+
   close();
 }

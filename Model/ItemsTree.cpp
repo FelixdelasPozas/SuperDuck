@@ -25,6 +25,8 @@
 // Qt
 #include <QDir>
 #include <QMessageBox>
+#include <QString>
+#include <QIcon>
 
 // C++
 #include <cstdlib>
@@ -123,6 +125,9 @@ void ItemFactory::deserializeItems(std::ifstream& stream, SplashScreen *splash, 
   int progress = 0;
   unsigned long long max = 0;
 
+  const QString title("Database");
+  const QString errorMessage("Error loading the database");
+
   if(stream.is_open())
   {
     std::string line;
@@ -159,7 +164,13 @@ void ItemFactory::deserializeItems(std::ifstream& stream, SplashScreen *splash, 
       }
       else
       {
-        QMessageBox::critical(nullptr, "Database", "Error loading the database");
+        QMessageBox msgBox(splash);
+        msgBox.setWindowTitle(title);
+        msgBox.setText(errorMessage);
+        msgBox.setWindowIcon(QIcon(":/Pato/rubber-duck.ico"));
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.exec();
+
         exit(0);
       }
 
@@ -174,7 +185,13 @@ void ItemFactory::deserializeItems(std::ifstream& stream, SplashScreen *splash, 
       }
       else
       {
-        QMessageBox::critical(nullptr, "Database", "Error loading the database");
+        QMessageBox msgBox(splash);
+        msgBox.setWindowTitle(title);
+        msgBox.setText(errorMessage);
+        msgBox.setWindowIcon(QIcon(":/Pato/rubber-duck.ico"));
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.exec();
+
         exit(0);
       }
 
@@ -187,7 +204,13 @@ void ItemFactory::deserializeItems(std::ifstream& stream, SplashScreen *splash, 
 
     if(line != "---" || stream.eof())
     {
-      QMessageBox::critical(nullptr, "Database", "Error loading the database");
+      QMessageBox msgBox(splash);
+      msgBox.setWindowTitle(title);
+      msgBox.setText(errorMessage);
+      msgBox.setWindowIcon(QIcon(":/Pato/rubber-duck.ico"));
+      msgBox.setStandardButtons(QMessageBox::Ok);
+      msgBox.exec();
+
       exit(0);
     }
 
@@ -219,11 +242,13 @@ void ItemFactory::deserializeItems(std::ifstream& stream, SplashScreen *splash, 
       for(auto child: children)
       {
         auto clean = child.trimmed();
-        unsigned long long cid =  std::strtoull(clean.toStdString().c_str(), nullptr, 10);
+        const long long cid =  std::strtoll(clean.toStdString().c_str(), nullptr, 10);
         if(cid == 0ULL) continue;
 
-        m_items[cid]->m_parent = m_items[id];
-        m_items[id]->m_childs.push_back(m_items[cid]);
+        auto idItem = std::find_if(m_items.cbegin(), m_items.cend(), [cid](const Item *i){return i && i->id() == cid; });
+        assert(idItem != m_items.cend());
+        (*idItem)->m_parent = m_items[id];
+        m_items[id]->m_childs.push_back(*idItem);
       }
     }
   }
@@ -254,7 +279,13 @@ void ItemFactory::deserializeItems(std::ifstream& stream, SplashScreen *splash, 
     auto it = std::find_if(m_items.cbegin() + 1, m_items.cend(), [](Item *i){ return i && !i->parent() && i->id() != 0; });
     if(it != m_items.cend())
     {
-      QMessageBox::critical(nullptr, "Database", "Error loading the database");
+      QMessageBox msgBox(splash);
+      msgBox.setWindowTitle(title);
+      msgBox.setText(errorMessage);
+      msgBox.setWindowIcon(QIcon(":/Pato/rubber-duck.ico"));
+      msgBox.setStandardButtons(QMessageBox::Ok);
+      msgBox.exec();
+
       exit(0);
     }
   }

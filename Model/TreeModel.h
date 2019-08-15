@@ -73,14 +73,28 @@ class TreeModel
     void createSubdirectory(Item *parent, const QString &directoryName);
 
     /** \brief Removes the item from the model.
+     * \param[in] item Item pointer.
      *
      */
     void removeItem(Item *item);
 
     /** \brief Removes the items from the model one by one.
+     * \param[in] items Item vector.
      *
      */
     void removeItems(Items items);
+
+    /** \brief Adds the given item to the model.
+     * \param[in] item Item pointer.
+     *
+     */
+    void addItem(Item *item);
+
+    /** \brief Adds the given item vector to the model.
+     * \param[in] items Item vector.
+     *
+     */
+    void addItems(Items items);
 
     /** \brief Set the text to filter by name.
      * \param[in] text Text string.

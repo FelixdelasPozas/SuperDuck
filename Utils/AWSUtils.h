@@ -137,12 +137,15 @@ namespace AWSUtils
        */
       int findCurrentFileIndex(const QString &key);
 
+      /** \brief Waits until the operation finishes.
+       * \param[in] handle Operation handler.
+       */
+      void waitUntilFinished(std::shared_ptr<Aws::Transfer::TransferHandle> handle);
+
       const Operation            m_operation; /** operation structure.                                 */
       QMap<QString, QStringList> m_errors;    /** maps objects with its errors, empty if successful.   */
       bool                       m_abort;     /** true if the task needs to abort or has been aborted. */
       unsigned int               m_fileCount; /** transfer files count.                                */
-
-      std::shared_ptr<Aws::Transfer::TransferManager> m_manager; /** AWS transfer manager shared pointer. */
   };
 };
 

@@ -195,13 +195,16 @@ void TreeModel::removeItem(Item* item)
   // NOTE: doesn't need to be recursive, Qt will remove the children too.
   assert(item != m_factory->items().at(0));
 
-  auto itemIndex = indexOf(item);
+  const auto itemIndex = indexOf(item);
+  const auto parentIndex = indexOf(item->parent());
 
-  beginRemoveRows(indexOf(item->parent()), itemIndex.row(), itemIndex.row());
+  beginRemoveRows(parentIndex, itemIndex.row(), itemIndex.row());
 
   m_factory->deleteItem(item);
 
   endRemoveRows();
+
+  emit dataChanged(parentIndex, parentIndex);
 }
 
 //-----------------------------------------------------------------------------
@@ -227,6 +230,28 @@ void TreeModel::setFilter(const QString& text)
 
     endResetModel();
   }
+}
+
+//-----------------------------------------------------------------------------
+void TreeModel::addItem(Item* item)
+{
+  assert(item != m_factory->items().at(0));
+
+  const auto itemIndex = indexOf(item);
+  const auto parentIndex = indexOf(item->parent());
+  beginInsertRows(parentIndex, itemIndex.row(), itemIndex.row());
+
+  // nothing to be done.
+
+  endInsertRows();
+
+  emit dataChanged(parentIndex, parentIndex);
+}
+
+//-----------------------------------------------------------------------------
+void TreeModel::addItems(Items items)
+{
+  std::for_each(items.begin(), items.end(), [this](Item *i) { addItem(i); });
 }
 
 //-----------------------------------------------------------------------------
