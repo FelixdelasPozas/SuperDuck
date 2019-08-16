@@ -30,7 +30,13 @@ The following libraries are required:
 The only current option is build from source as binaries are not provided.
 
 # Screenshots
-No screenshots.
+Main dialog with directory tree and sizes. 
+
+![Mainwindow](https://user-images.githubusercontent.com/12167134/63134735-0d111380-bfcb-11e9-836e-20756576d27c.png)
+
+Settings dialog. The option to create the .aws credentials file is available if not present in the system. 
+
+![Settings dialog](https://user-images.githubusercontent.com/12167134/63134737-0d111380-bfcb-11e9-919e-9383d65b0eca.png)
 
 # Repository information
 
